@@ -1,0 +1,541 @@
+<!doctype html><html><head><meta name="robots" content="noindex, nofollow"><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Euro Area Chart Pack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --surface-2:#eef1f5;
+  --ink:#101a26; --ink-2:#465264; --muted:#768194; --rule:#dce1e8; --rule-strong:#b9c1cc;
+  --accent:#163f8c; --accent-ink:#ffffff; --accent-soft:#e3eaf7;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --ref:#8a93a1;
+  --up:#0b7a3e; --down:#b4332f;
+  --sans:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0e131a; --surface:#151c25; --surface-2:#1c2530;
+    --ink:#edf1f6; --ink-2:#b2bcc9; --muted:#8793a3; --rule:#26303c; --rule-strong:#3a4656;
+    --accent:#8fb0ff; --accent-ink:#0e131a; --accent-soft:#1d2a44;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --ref:#7b8696;
+    --up:#4cc28a; --down:#ef7b76;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e131a; --surface:#151c25; --surface-2:#1c2530;
+  --ink:#edf1f6; --ink-2:#b2bcc9; --muted:#8793a3; --rule:#26303c; --rule-strong:#3a4656;
+  --accent:#8fb0ff; --accent-ink:#0e131a; --accent-soft:#1d2a44;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --ref:#7b8696;
+  --up:#4cc28a; --down:#ef7b76;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.55;margin:0}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:20px;padding-block:0 56px}
+header.top{padding-block:28px 18px;display:flex;flex-wrap:wrap;gap:12px 32px;align-items:flex-end;justify-content:space-between}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+h1{font-size:clamp(24px,3.2vw,32px);line-height:1.2;font-weight:700;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.stamp{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--ink-2);text-align:right}
+.stamp b{font-family:var(--mono);font-weight:500;color:var(--ink)}
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;border-bottom:1px solid var(--rule)}
+.tablist{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.tablist::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;appearance:none;border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink-2);font:inherit;font-weight:500;font-size:14px;padding:8px 16px;border-radius:6px;cursor:pointer;display:flex;gap:8px;align-items:baseline}
+.tab .ko{font-size:12px;color:var(--muted)}
+.tab:hover{border-color:var(--accent);color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tab[aria-selected="true"] .ko{color:var(--accent-ink);opacity:.8}
+.tab:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:8px;overflow:hidden;margin-block:20px 8px}
+.kpi{background:var(--surface);padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi .k{font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .v{font-family:var(--mono);font-size:22px;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.kpi .v small{font-size:13px;color:var(--muted);margin-left:2px}
+.kpi .p{font-size:11.5px;color:var(--muted);font-family:var(--mono);display:flex;gap:8px;flex-wrap:wrap}
+.d-up{color:var(--up)} .d-down{color:var(--down)} .d-flat{color:var(--muted)}
+section.blk{margin-top:36px}
+.blk-h{display:flex;gap:12px;align-items:baseline;border-top:2px solid var(--ink);padding-top:10px;margin-bottom:14px;flex-wrap:wrap}
+.blk-h .n{font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:500}
+.blk-h h2{font-size:18px;margin:0;font-weight:600;text-wrap:balance}
+.blk-h .sub{font-size:12.5px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:14px 16px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.card.wide{grid-column:1/-1}
+.card h3{font-size:14.5px;margin:0;font-weight:600}
+.card .unit{font-size:12px;color:var(--muted);font-family:var(--mono)}
+.ch{position:relative;height:270px}
+.card.wide .ch{height:300px}
+.note{font-size:11.5px;color:var(--muted);margin:2px 0 0;line-height:1.5}
+details{font-size:12px}
+summary{cursor:pointer;color:var(--ink-2);font-size:12px;width:max-content;padding:2px 0}
+.tbl{overflow-x:auto;margin-top:6px;max-height:280px;overflow-y:auto;border:1px solid var(--rule);border-radius:6px}
+table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums}
+th,td{padding:4px 8px;text-align:right;border-bottom:1px solid var(--rule);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{position:sticky;top:0;background:var(--surface-2);color:var(--ink-2);font-weight:500;font-family:var(--sans)}
+footer.src{margin-top:44px;border-top:1px solid var(--rule);padding-top:16px;font-size:12px;color:var(--ink-2);display:grid;gap:6px;max-width:900px}
+footer.src p{margin:0}
+footer.src b{color:var(--ink);font-weight:600}
+@media (max-width:980px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:720px){.grid{grid-template-columns:1fr}.stamp{text-align:left}.ch{height:240px}.card.wide .ch{height:260px}}
+@media (max-width:420px){.wrap{padding-inline:16px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi .v{font-size:19px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Euro Area Macro · Chart Pack</p>
+      <h1>유로지역 경제 차트팩</h1>
+    </div>
+    <div class="stamp">
+      <span>자료 기준일 <b id="asOf"></b> · Eurostat, ECB</span>
+      <span>ECB 예금금리 <b id="dfrNow"></b> · MRO <b id="mroNow"></b> <span style="color:var(--muted)" id="polDate"></span></span>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="국가 선택">
+    <div class="tablist" role="tablist" id="tablist"></div>
+  </nav>
+
+  <div class="kpis" id="kpis" aria-label="최신 주요 지표"></div>
+  <main id="main"></main>
+
+  <footer class="src">
+    <p><b>자료</b> Eurostat(국민계정 nama_10_gdp·namq_10_gdp·nama_10_pe, HICP prc_hicp_ainr·prc_hicp_minr, 실업률 une_rt_a·une_rt_m, 10년물 국채금리 irt_lt_mcby_m, 산업·서비스 생산 sts_inpr_m·sts_sepr_m, EC 기업·소비자 서베이 ei_bssi_m_r2, 무역 ei_eteu27_2020_m·ext_st_easitc, Comext DS-045409, 재정 gov_10dd_edpt1, 경상수지 ei_bpm6ca_q·bop_gdp6_q, 소매판매 sts_trtu_m, 주택가격 prc_hpi_a, 이민 migr_imm1ctz·demo_gind), Yahoo Finance(주가지수 월말 종가), ECB Data Portal(정책금리 FM, 환율 EXR).</p>
+    <p><b>유로지역</b> 2026년 불가리아 가입 이후 기준인 EA21(고정 구성, 과거 소급) 기준. 10년물 금리의 유로지역 값은 Eurostat의 유로지역 수렴기준 금리(EA).</p>
+    <p><b>달러 환산</b> 명목 GDP는 ECB 연평균 EUR/USD 기준환율, 수출입은 월별 금액을 해당 월 평균 환율로 환산한 뒤 합산.</p>
+    <p id="periods"></p>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const DATA = __DATA__;
+const M = DATA.meta;
+const C = {
+  EZ:{en:'Eurozone', ko:'유로지역', gen:'유로지역', idx:'EURO STOXX 50'},
+  DE:{en:'Germany', ko:'독일', gen:'독일', idx:'DAX'},
+  FR:{en:'France', ko:'프랑스', gen:'프랑스', idx:'CAC 40'},
+  IT:{en:'Italy', ko:'이탈리아', gen:'이탈리아', idx:'FTSE MIB'},
+  ES:{en:'Spain', ko:'스페인', gen:'스페인', idx:'IBEX 35'},
+  NL:{en:'Netherlands', ko:'네덜란드', gen:'네덜란드', idx:'AEX'},
+  BE:{en:'Belgium', ko:'벨기에', gen:'벨기에', idx:'BEL 20'},
+  IE:{en:'Ireland', ko:'아일랜드', gen:'아일랜드', idx:'ISEQ All Share'},
+  AT:{en:'Austria', ko:'오스트리아', gen:'오스트리아', idx:'ATX'}
+};
+const ORDER = ['EZ','DE','FR','IT','ES','NL','BE','IE','AT'];
+const fM = m => m.slice(2,4)+'.'+m.slice(5);
+const fQ = q => q.slice(2,4)+'Q'+q.slice(-1);
+const LM = M.months.map(fM), LQ = M.qs.map(fQ), LY = M.years, LMS = M.monthsS.map(fM);
+const YR = M.years[0]+'–'+M.years[M.years.length-1];
+const EANAME = {AT:'오스트리아',BE:'벨기에',BG:'불가리아',CY:'키프로스',DE:'독일',EE:'에스토니아',EL:'그리스',ES:'스페인',FI:'핀란드',FR:'프랑스',HR:'크로아티아',IE:'아일랜드',IT:'이탈리아',LT:'리투아니아',LU:'룩셈부르크',LV:'라트비아',MT:'몰타',NL:'네덜란드',PT:'포르투갈',SI:'슬로베니아',SK:'슬로바키아'};
+const fD = s => { if(!s) return ''; const p=s.split('-'); return p[0]+'.'+(+p[1])+(p[2]?'.'+(+p[2]):''); };
+const nf = (v,d) => v==null||isNaN(v) ? '–' : (Math.abs(v)<1e-9?0:v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const div = (a,k) => a.map(v => v==null?null:v/k);
+const cst = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const lastIdx = a => { for(let i=a.length-1;i>=0;i--) if(a[i]!=null) return i; return -1; };
+
+function sections(c){
+  const d = DATA[c], nm = C[c].ko, isEZ = c==='EZ';
+  const gdpUsd = d.gdpEur.map((v,i)=> v*M.fxA[i]/1e6);
+  const trLab = isEZ ? '역외(유로지역 외)' : '역외(EU 외)';
+  let sprSeries, sprNote;
+  if(c==='DE'){
+    sprSeries = [{n:'프랑스',d:DATA.FR.spr,col:'--s1'},{n:'이탈리아',d:DATA.IT.spr,col:'--s2'},{n:'스페인',d:DATA.ES.spr,col:'--s3'}];
+    sprNote = '독일 국채(Bund)가 기준물이므로 주요국의 대(對)독일 스프레드를 표시.';
+  } else if(isEZ){
+    sprSeries = [{n:'유로지역',d:d.spr,col:'--s1'},{n:'프랑스',d:DATA.FR.spr,col:'--s2'},{n:'이탈리아',d:DATA.IT.spr,col:'--s3'},{n:'스페인',d:DATA.ES.spr,col:'--s4'}];
+    sprNote = '유로지역 값은 Eurostat 유로지역 수렴기준 10년물 금리 − 독일 10년물.';
+  } else {
+    sprSeries = [{n:nm+' − 독일',d:d.spr,col:'--s1'}];
+    sprNote = '월평균 10년물 수익률 차이(bp).';
+  }
+  const y10Series = [
+    {n:'ECB 예금금리(DFR)',d:M.dfr,col:'--s1',step:true},
+    {n:'ECB MRO 금리',d:M.mro,col:'--s3',step:true,dash:[5,4]},
+    {n:(c==='EZ'?'유로지역':nm)+' 10년물 국채',d:d.y10,col:'--s2'}
+  ];
+  return [
+    {n:'1', t:'경제 규모', sub:'연간 · '+YR, charts:[
+      {t:'명목 GDP', u:'조 달러', type:'bar', L:LY, dec:2, S:[{n:'명목 GDP',d:gdpUsd,col:'--s1'}],
+       note:'Eurostat 명목 GDP(백만 유로)를 ECB 연평균 EUR/USD로 환산.'},
+      {t:'총인구', u:'백만 명', type:'line', L:LY, dec:2, points:true, zeroBase:false, S:[{n:'총인구',d:d.pop,col:'--s3'}],
+       note:'국민계정 기준 연평균 총인구(nama_10_pe).'}
+    ]},
+    {n:'2', t:'실질 GDP 성장률', sub:'연간 · 분기', charts:[
+      {t:'연간 실질 GDP 성장률', u:'% 전년비', type:'bar', L:LY, dec:1, S:[{n:'실질 GDP',d:d.ga,col:'--s1'}]},
+      {t:'분기 실질 GDP 성장률', u:'%', type:'bar', L:LQ, dec:1, S:[
+        {n:'전기비(계절조정)',d:d.gqq,col:'--s1'},
+        {n:'전년동기비',d:d.gqy,col:'--s2',kind:'line'}],
+       note:'계절·영업일수 조정 연쇄가격 기준.'+(c==='IE'?' 아일랜드는 다국적기업의 지식재산·생산 이전이 GDP·수출·경상수지에 크게 반영돼 분기 변동이 매우 큼(국내 경기는 수정국내총수요(MDD) 등 보조지표로 판단).':'')}
+    ]},
+    {n:'3', t:'대외교역', sub:'상품 수출입 · 달러 환산', charts:[
+      {t:'연간 수출입', u:'십억 달러', type:'bar', L:LY, dec:0, S:[
+        {n:'수출 · 전체',d:div(d.trA.ex,1e3),col:'--s1'},{n:'수입 · 전체',d:div(d.trA.im,1e3),col:'--s2'},
+        {n:'수출 · '+trLab,d:div(d.trA.xex,1e3),col:'--s3'},{n:'수입 · '+trLab,d:div(d.trA.xim,1e3),col:'--s4'}]},
+      {t:'분기 수출입', u:'십억 달러', type:'line', L:LQ, dec:0, points:true, zeroBase:false, S:[
+        {n:'수출 · 전체',d:div(d.trQ.ex,1e3),col:'--s1'},{n:'수입 · 전체',d:div(d.trQ.im,1e3),col:'--s2'},
+        {n:'수출 · '+trLab,d:div(d.trQ.xex,1e3),col:'--s3'},{n:'수입 · '+trLab,d:div(d.trQ.xim,1e3),col:'--s4',dash:[5,4]}],
+       note: isEZ ? '전체 = 역내(회원국 간) + 역외 교역. 원계열(계절 미조정).' : '전체 = 대세계, 역외 = EU 27개국 외 교역. 원계열(계절 미조정).'}
+    ]},
+    {n:'4', t:'경상수지', sub:'연간 · 분기 · 달러 환산', charts:[
+      {t:'연간 경상수지', u:'십억 달러', type:'bar', L:LY, dec:1, S:[{n:'경상수지',d:d.caA,col:'--s1'}]},
+      {t:'연간 경상수지 / GDP', u:'% GDP', type:'bar', L:LY, dec:1, S:[{n:'경상수지/GDP',d:d.caAp,col:'--s3'}]},
+      {t:'분기 경상수지', u:'십억 달러', type:'bar', L:LQ, dec:1, S:[{n:'경상수지',d:d.caQ,col:'--s1'}],
+       note:'원계열(계절 미조정). 분기 평균 EUR/USD로 환산, 연간은 분기 환산액의 합.'+(c==='IE'?' 아일랜드는 다국적기업의 지식재산·생산 이전이 GDP·수출·경상수지에 크게 반영돼 분기 변동이 매우 큼(국내 경기는 수정국내총수요(MDD) 등 보조지표로 판단).':'')},
+      {t:'분기 경상수지 / GDP', u:'% GDP', type:'bar', L:LQ, dec:1, S:[{n:'경상수지/GDP',d:d.caQp,col:'--s3'}],
+       note:(isEZ?'유로지역은 역외(유로지역 외) 거래 기준. ':'')+'자료: Eurostat ei_bpm6ca_q, bop_gdp6_q. GDP 대비 비율은 Eurostat 공표치(원계열).'}
+    ]},
+    {n:'5', t:'대 한국 교역', sub:'연간 · '+YR, charts:[
+      {t:nm+'의 대한국 수출입', u:'십억 달러', type:'bar', L:LY, dec:1, wide:true, balance:true, S:[
+        {n:'대한국 수출',d:div(d.kr.ex,1e3),col:'--s1'},{n:'대한국 수입',d:div(d.kr.im,1e3),col:'--s2'}],
+       note:(isEZ?'Eurostat 유로지역 교역통계(ext_st_easitc, 상대국 KR)':'Eurostat Comext(DS-045409, 상대국 KR, 전 품목)')+' 기준 유럽 측 통계. 월별 금액을 월평균 환율로 환산해 합산. 한국 관세청 통계와는 집계 기준 차이로 값이 다름.'}
+    ]},
+    {n:'6', t:'재정', sub:'연간 · 일반정부 · GDP 대비', charts:[
+      {t:'정부부채 / GDP', u:'% GDP', type:'bar', L:LY, dec:1, S:[
+        {n:'정부부채',d:d.debt,col:'--s1'},
+        {n:'_마스트리흐트 기준 60%',d:LY.map(()=>60),col:'--ref',ref:true,kind:'line'}],
+       note:'일반정부 총부채(EDP 기준, 명목가치 연말 잔액). 점선은 마스트리흐트 조약 기준 60%.'},
+      {t:'재정수지 / GDP', u:'% GDP', type:'bar', L:LY, dec:1, S:[
+        {n:'재정수지',d:d.bal,col:'--s2'},
+        {n:'_마스트리흐트 기준 −3%',d:LY.map(()=>-3),col:'--ref',ref:true,kind:'line'}],
+       note:'일반정부 순대출(+)/순차입(−). 점선은 마스트리흐트 조약 기준 −3%. 자료: Eurostat gov_10dd_edpt1('+fD(M.govUpdated)+' 공표 EDP 통보 기준).'}
+    ]},
+    {n:'7', t:'소비자물가', sub:'HICP · 연간 · 월간', charts:[
+      {t:'연간 소비자물가 상승률', u:'% 전년비', type:'bar', L:LY, dec:1, S:[
+        {n:'헤드라인',d:d.cpiA,col:'--s1'},{n:'근원',d:d.coreA,col:'--s2'}]},
+      {t:'월간 소비자물가 상승률', u:'% 전년동월비', type:'line', L:LM, dec:1, S:[
+        {n:'헤드라인',d:d.cpiM,col:'--s1'},{n:'근원',d:d.coreM,col:'--s2'},
+        {n:'_ECB 목표 2%',d:LM.map(()=>2),col:'--ref',ref:true}],
+       note:'근원 = 에너지·식품·주류·담배 제외. 2026년부터 HICP는 ECOICOP ver.2 분류(prc_hicp_minr) 기준. 점선은 ECB 물가목표 2%.'}
+    ]},
+    {n:'8', t:'품목별 소비자물가', sub:'최근 월 · HICP · % 전년동월비', charts:[
+      {t:'품목별 소비자물가 상승률', u:'% 전년동월비', type:'bar', horizontal:true, period:M.months[M.months.length-1], dec:1,
+       L:['전체(헤드라인)','식료품·주류·담배','  가공식품','  미가공식품','에너지','  전기·가스·열','  연료(석유류)','비에너지 공업제품','서비스'],
+       grp:['--ink-2','--s3','--s3','--s3','--s2','--s2','--s2','--s4','--s1'], sub:[0,0,1,1,0,1,1,0,0],
+       S:[{n:'상승률',d:d.itH,col:'--s1'}],
+       note:'ECB·Eurostat 특수 집계 기준. 들여쓴 항목은 상위 항목의 세부 구성.'},
+      {t:'품목별 근원물가 상승률', u:'% 전년동월비', type:'bar', horizontal:true, period:M.months[M.months.length-1], dec:1,
+       L:['근원(에너지·식품 제외)','비에너지 공업제품','  내구재','  준내구재','  비내구재','서비스','  주거 관련','  교통 관련','  통신 관련','  여가·개인 관련','  기타 서비스'],
+       grp:['--ink-2','--s4','--s4','--s4','--s4','--s1','--s1','--s1','--s1','--s1','--s1'], sub:[0,0,1,1,1,0,1,1,1,1,1],
+       S:[{n:'상승률',d:d.itC,col:'--s1'}],
+       note:'근원물가 = 비에너지 공업제품 + 서비스. ECOICOP ver.2 기준 서비스 세부 분류.'}
+    ]},
+    {n:'9', t:'실업률', sub:'전체 · 청년 · 연간 · 월간', charts:[
+      {t:'연간 실업률', u:'%', type:'line', L:LY, dec:1, points:true, S:[
+        {n:'전체(15–74세)',d:d.unA,col:'--s1'},{n:'청년(15–24세)',d:d.ynA,col:'--s2'}]},
+      {t:'월간 실업률', u:'% · 계절조정', type:'line', L:LM, dec:1, S:[
+        {n:'전체',d:d.unM,col:'--s1'},{n:'청년(25세 미만)',d:d.ynM,col:'--s2'}],
+       note:'월간 청년 실업률은 25세 미만 기준(une_rt_m).'}
+    ]},
+    {n:'10', t:'주가', sub:'월간 · 월말 종가', charts:[
+      {t:C[c].idx+' 지수', u:'포인트', type:'line', L:LMS, dec:0, zeroBase:false, S:[{n:C[c].idx,d:d.stk,col:'--s1'}],
+       note:'월말 종가(Yahoo Finance 기준).'+(M.stkNote?' '+M.stkNote+'.':'')},
+      {t:C[c].idx+' 월간 상승률', u:'% 전월비', type:'bar', L:LMS, dec:1, S:[{n:'월간 상승률',d:d.stkR,col:'--s2'}],
+       note:'월말 종가 기준 전월 대비 등락률.'+(M.stkNote?' '+M.stkNote+'.':'')}
+    ]},
+    {n:'11', t:'금리', sub:'월간 · 정책금리 · 10년물 국채', charts:[
+      {t:'ECB 정책금리와 10년물 국채금리', u:'%', type:'line', L:LM, dec:2, S:y10Series,
+       note:'정책금리는 월말 기준, 10년물은 월평균(Maastricht 수렴기준 금리).'},
+      {t:'10년물 국채금리 스프레드(대 독일)', u:'bp', type:'line', L:LM, dec:0, S:sprSeries, note:sprNote}
+    ]},
+    {n:'12', t:'환율', sub:'월간 · ECB 기준환율 월평균', charts:[
+      {t:'EUR/USD', u:'달러 / 유로', type:'line', L:LM, dec:4, zeroBase:false, S:[{n:'EUR/USD',d:M.fxUsd,col:'--s1'}],
+       note:'1유로당 달러. 상승은 유로 강세.'},
+      {t:'EUR/KRW', u:'원 / 유로', type:'line', L:LM, dec:2, zeroBase:false, S:[{n:'EUR/KRW',d:M.fxKrw,col:'--s2'}],
+       note:'1유로당 원. 상승은 유로 대비 원화 약세. 유로화는 공통 통화라 모든 탭에서 같은 값.'}
+    ]},
+    {n:'13', t:'생산', sub:'월간 · 2021=100 · 계절조정', charts:[
+      {t:'산업생산 · 전체', u:'지수(2021=100)', type:'line', L:LM, dec:1, zeroBase:false, S:[
+        {n:'산업생산 전체',d:d.ipT,col:'--s1'},
+        {n:'_2021=100',d:LM.map(()=>100),col:'--ref',ref:true}],
+       note:'광업·제조업·전기가스(NACE B–D). 점선은 2021년 평균 수준(100).'},
+      {t:'제조업과 서비스업 생산', u:'지수(2021=100)', type:'line', L:LM, dec:1, zeroBase:false, S:[
+        {n:'제조업',d:d.ipM,col:'--s2'},
+        {n:'서비스업',d:d.ipS,col:'--s3'},
+        {n:'_2021=100',d:LM.map(()=>100),col:'--ref',ref:true}],
+       note:'제조업 = NACE C, 서비스업 = 도소매·금융 제외 기업서비스(H–N, K 제외). 서비스 생산은 산업생산보다 한 달 늦게 발표.'+(c==='IE'?' 아일랜드는 서비스 생산지수를 Eurostat에 제공하지 않아 제조업만 표시.':'')+(c==='BE'?'':'')}
+    ]},
+    {n:'14', t:'기업 업황', sub:'월간 · EC 기업·소비자 서베이 · 계절조정', charts:[
+      {t:'경제심리지수(ESI) · 전체', u:'지수(장기평균=100)', type:'line', L:LM, dec:1, zeroBase:false, S:[
+        {n:'경제심리지수',d:d.esi,col:'--s1'},
+        {n:'_장기평균 100',d:LM.map(()=>100),col:'--ref',ref:true}],
+       note:'산업·서비스·소비자·소매·건설 신뢰지수를 가중 합성한 종합 업황지표.'+(c==='ES'?' 스페인은 2024.10 이후 서비스·소매 서베이가 중단된 상태에서 산출되어 이전 시기와 구성이 다름.':'')},
+      {t:'제조업 · 서비스업 신뢰지수', u:'응답 균형(%p)', type:'line', L:LM, dec:1, S:[
+        {n:'제조업(ICI)',d:d.ici,col:'--s2'},{n:'서비스업(SCI)',d:d.sci,col:'--s3'}],
+       note: c==='ES' ? '스페인의 서비스업 서베이는 2024.10부터 일시 중단(EC 발표)되어 2024.9까지만 표시. 재개 시점은 미정.' : '긍정 응답 비율 − 부정 응답 비율. 0 위면 개선 응답 우위.'}
+    ]},
+    {n:'15', t:'소매판매 · 소비자 신뢰', sub:'월간 · 계절조정', charts:[
+      {t:'소매판매', u:'물량지수(2021=100)', type:'line', L:LM, dec:1, zeroBase:false, S:[
+        {n:'소매판매',d:d.rt,col:'--s1'},{n:'_2021=100',d:LM.map(()=>100),col:'--ref',ref:true}],
+       note:'자동차·연료 제외 소매업(NACE G47) 판매 물량, 계절·영업일수 조정. 자료: Eurostat sts_trtu_m.'},
+      {t:'소비자 신뢰지수', u:'응답 균형(%p)', type:'line', L:LM, dec:1, S:[{n:'소비자 신뢰지수',d:d.cc,col:'--s2'}],
+       note:'EC 소비자 서베이. 0보다 낮으면 비관적 응답 우위.'}
+    ]},
+    {n:'16', t:'주택가격', sub:'연간 · '+YR, charts:[
+      {t:'주택가격 상승률', u:'% 전년비', type:'bar', L:LY, dec:1, wide:true, S:[{n:'주택가격',d:d.hpi,col:'--s1'}],
+       note:'Eurostat 주택가격지수(prc_hpi_a, 신규·기존 주택 전체 거래 기준)의 연평균 상승률.'}
+    ]},
+    {n:'17', t:'이민', sub:'연간 · '+M.yearsM[0]+'–'+M.yearsM[4], charts:[
+      {t:'이민자 수(연간 유입)', u:'천 명', type:'bar', L:M.yearsM, dec:0, S:[{n:'이민자 수',d:d.imm,col:'--s3'}],
+       note: isEZ ? '유로지역 21개 회원국 유입 이민자 합계(회원국 간 이동 포함).'+(M.immMissing&&M.immMissing.length?' '+M.immYear+'년은 '+M.immMissing.map(g=>EANAME[g]||g).join('·')+' 미발표로 합계를 산출하지 않음.':'') : '해당 연도 중 1년 이상 거주 목적으로 유입된 이민자(국적 불문, 자국민 귀환 포함). 자료: Eurostat migr_imm1ctz.'},
+      {t:'이민자 수 / 총인구', u:'%', type:'bar', L:M.yearsM, dec:2, S:[{n:'인구 대비 이민 유입',d:d.immR,col:'--s2'}],
+       note:'연간 유입 이민자 수를 해당 연도 연평균 인구(Eurostat demo_gind)로 나눈 비율.'+(c==='DE'?' 2022년 급증은 우크라이나 피란민 유입 영향.':'')}
+    ]}
+  ];
+}
+
+let charts = [];
+function kpis(c){
+  const d = DATA[c];
+  const item = (k, arr, lab, unit, dec, lastLabFn) => {
+    const i = lastIdx(arr); if(i<0) return '';
+    const v = arr[i], p = i>0 ? arr[i-1] : null;
+    const dv = p==null ? null : v-p;
+    const cls = dv==null||Math.abs(dv)<1e-9 ? 'd-flat' : (dv>0?'d-up':'d-down');
+    const sign = dv==null ? '' : (dv>0?'+':dv<0?'−':'±');
+    const dtxt = dv==null ? '' : `<span class="${cls}">${sign}${nf(Math.abs(dv),dec)}</span>`;
+    return `<div class="kpi"><span class="k">${k}</span><span class="v">${nf(v,dec)}<small>${unit}</small></span><span class="p"><span>${lastLabFn(i)}</span>${dtxt}</span></div>`;
+  };
+  const qL = i => M.qs[i].replace('-',' '), mL = i => M.months[i].replace('-','.');
+  let h = '';
+  h += item('실질 GDP 전기비', d.gqq, '', '%', 1, qL);
+  h += item('HICP 상승률', d.cpiM, '', '%', 1, mL);
+  h += item('근원 HICP', d.coreM, '', '%', 1, mL);
+  h += item('실업률', d.unM, '', '%', 1, mL);
+  h += item((c==='EZ'?'유로지역':'')+' 10년물 금리', d.y10, '', '%', 2, mL);
+  if(c==='DE') h += `<div class="kpi"><span class="k">대독일 스프레드</span><span class="v">–</span><span class="p"><span>독일 = 기준물</span></span></div>`;
+  else h += item('대독일 스프레드', d.spr, '', 'bp', 0, mL);
+  document.getElementById('kpis').innerHTML = h;
+}
+
+function buildTable(ch){
+  const vis = ch.S.filter(s=>!s.ref);
+  let h = '<table><thead><tr><th>'+(ch.horizontal?'품목 ('+ch.period.replace('-','.')+')':'기간')+'</th>'+vis.map(s=>`<th>${s.n}</th>`).join('')+(ch.balance?'<th>수지</th>':'')+'</tr></thead><tbody>';
+  ch.L.forEach((l,i)=>{
+    h += `<tr><td>${l}</td>`+vis.map(s=>`<td>${nf(s.d[i],ch.dec)}</td>`).join('');
+    if(ch.balance){ const a=vis[0].d[i], b=vis[1].d[i]; h += `<td>${a==null||b==null?'–':nf(a-b,ch.dec)}</td>`; }
+    h += '</tr>';
+  });
+  return h+'</tbody></table>';
+}
+
+const VL = {
+  id:'vlabels',
+  afterDatasetsDraw(chart, args, opt){
+    const {ctx, chartArea:ca} = chart; const dec = opt.dec; const H = 13;
+    const right = chart.width - 2, top = 2;
+    ctx.save();
+    ctx.font = '500 10.5px "IBM Plex Mono", ui-monospace, Menlo, monospace';
+    ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+    const boxes = [];
+    const hit = r => boxes.some(b => r.x < b.x+b.w && r.x+r.w > b.x && r.y < b.y+b.h && r.y+r.h > b.y);
+    const put = (t, x, y) => { ctx.textAlign='left'; ctx.lineWidth=3; ctx.strokeStyle=opt.halo; ctx.strokeText(t,x,y); ctx.fillStyle=opt.ink; ctx.fillText(t,x,y); };
+    const lastLab = chart.data.labels.length-1;
+    // bars: every value (smaller type when categories are narrow)
+    const catW = ca.width / Math.max(1, chart.data.labels.length);
+    const dense = catW < 14;
+    ctx.font = dense ? '500 8px "IBM Plex Mono", ui-monospace, Menlo, monospace' : '500 10.5px "IBM Plex Mono", ui-monospace, Menlo, monospace';
+    const HB = dense ? 9 : H;
+    chart.data.datasets.forEach((ds,di)=>{
+      const meta = chart.getDatasetMeta(di);
+      if(!chart.isDatasetVisible(di) || ds._ref || meta.type!=='bar') return;
+      meta.data.forEach((el,i)=>{
+        const v = ds.data[i]; if(v==null) return;
+        const t = nf(v,dec), w = ctx.measureText(t).width, neg = v<0;
+        if(chart.options.indexAxis==='y'){
+          let x = neg ? el.x-6-w : el.x+6; if(neg && x < chart.chartArea.left+2) x = el.base+6;
+          put(t, x, el.y); boxes.push({x, y:el.y-H/2, w, h:H}); return;
+        }
+        if(w <= el.width+2){
+          const y = neg ? el.y+9 : el.y-8;
+          put(t, el.x-w/2, y); boxes.push({x:el.x-w/2, y:y-H/2, w, h:H});
+        } else {
+          ctx.save(); ctx.translate(el.x, neg ? el.y+4 : el.y-4); ctx.rotate(-Math.PI/2);
+          ctx.textAlign = neg ? 'right' : 'left'; ctx.lineWidth=3; ctx.strokeStyle=opt.halo; ctx.strokeText(t,0,0); ctx.fillStyle=opt.ink; ctx.fillText(t,0,0);
+          ctx.restore();
+          boxes.push({x:el.x-HB/2, y: neg ? el.y+4 : el.y-4-w, w:HB, h:w});
+        }
+      });
+    });
+    ctx.font = '500 10.5px "IBM Plex Mono", ui-monospace, Menlo, monospace';
+    // lines: last value only
+    chart.data.datasets.forEach((ds,di)=>{
+      const meta = chart.getDatasetMeta(di);
+      if(!chart.isDatasetVisible(di) || ds._ref || meta.type!=='line') return;
+      const d = ds.data; let li=-1, mx=-1, mn=-1;
+      d.forEach((v,i)=>{ if(v==null) return; li=i; if(mx<0||v>d[mx]) mx=i; if(mn<0||v<d[mn]) mn=i; });
+      if(li<0) return;
+      const items = [{i:li,k:'last'}];
+      items.forEach(it=>{
+        const el = meta.data[it.i]; if(!el) return;
+        let t = nf(d[it.i],dec);
+        if(it.k==='last' && it.i<lastLab) t += ' ('+chart.data.labels[it.i]+')';
+        if(it.k==='max') t = '▲'+t; if(it.k==='min') t = '▼'+t;
+        const w = ctx.measureText(t).width;
+        let bx, base;
+        if(it.k==='last'){ bx = el.x+7; base = el.y; if(bx+w > right) bx = el.x-7-w; }
+        else { bx = el.x-w/2; base = it.k==='max' ? el.y-11 : el.y+12; bx = Math.max(ca.left, Math.min(bx, right-w)); }
+        const offs = it.k==='max' ? [0,-13,26,-26,39] : it.k==='min' ? [0,13,-26,26,-39] : [0,-13,13,-26,26,-39,39];
+        let y = base;
+        for(const o of offs){ const yy = Math.max(top+H/2, base+o); const r={x:bx-1,y:yy-H/2,w:w+2,h:H}; if(!hit(r)){ y=yy; break; } y=yy; }
+        ctx.fillStyle = ds.borderColor; ctx.strokeStyle = opt.halo; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(el.x, el.y, 3.2, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        put(t, bx, y); boxes.push({x:bx-1, y:y-H/2, w:w+2, h:H});
+      });
+    });
+    ctx.restore();
+  }
+};
+
+function makeHBar(canvas, ch){
+  const ink = cst('--ink'), ink2 = cst('--ink-2'), muted = cst('--muted'), rule = cst('--rule'), rs = cst('--rule-strong'), surf = cst('--surface');
+  const cols = ch.grp.map((g,i)=>{ const c = cst(g); return ch.sub[i] ? c+'99' : c; });
+  const per = ch.period.replace('-','.');
+  return new Chart(canvas, {
+    type:'bar',
+    data:{labels:ch.L, datasets:[{label:ch.S[0].n, data:ch.S[0].d, backgroundColor:cols, borderRadius:3, borderSkipped:false, borderWidth:0, barPercentage:.78, categoryPercentage:.9}]},
+    plugins:[VL],
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false,
+      layout:{padding:{top:4, right:40, left:4}},
+      plugins:{
+        vlabels:{dec:ch.dec, ink:ink, halo:surf},
+        legend:{display:false},
+        tooltip:{backgroundColor:ink, titleColor:cst('--bg'), bodyColor:cst('--bg'), padding:10, cornerRadius:6,
+          callbacks:{title:i=>i[0].label.trim()+' · '+per, label:i=>` ${nf(i.raw,ch.dec)}%`}}
+      },
+      scales:{
+        x:{grace:'15%', border:{display:false}, grid:{color:ctx=> ctx.tick && ctx.tick.value===0 ? rs : rule},
+           title:{display:true, text:per+' 기준 · % 전년동월비', color:ink, font:{family:'IBM Plex Mono', size:11, weight:'600'}, padding:{top:6}},
+           ticks:{color:muted, maxTicksLimit:7, font:{family:'IBM Plex Mono', size:11}}},
+        y:{grid:{display:false}, border:{color:rs},
+           ticks:{color:c=> ch.sub[c.index] ? muted : ink2, font:c=>({family:'IBM Plex Sans KR', size:12, weight: ch.sub[c.index] ? '400' : '600'}), autoSkip:false}}
+      }
+    }
+  });
+}
+
+function makeChart(canvas, ch){
+  if(ch.horizontal) return makeHBar(canvas, ch);
+  const ink = cst('--ink'), ink2 = cst('--ink-2'), muted = cst('--muted'), rule = cst('--rule'), rs = cst('--rule-strong'), surf = cst('--surface');
+  const baseType = ch.type;
+  // trim the axis to the last period that has any data, so the x-axis ends at the latest release
+  let end = -1; ch.S.forEach(s=>{ if(!s.ref){ const k = lastIdx(s.d); if(k>end) end=k; } });
+  const L = ch.L.slice(0, end+1);
+  const hasLine = ch.S.some(s=>!s.ref && (s.kind||baseType)==='line');
+  const ds = ch.S.map(s => {
+    const col = cst(s.col);
+    const kind = s.kind || baseType;
+    const o = {label:s.n, data:s.d.slice(0,end+1), type:kind, borderColor:col, backgroundColor:col, _ref:!!s.ref};
+    if(kind==='bar'){
+      Object.assign(o,{borderRadius:3, borderSkipped:false, borderWidth:0, maxBarThickness:34, categoryPercentage:.72, barPercentage:.9, order:2});
+    } else {
+      Object.assign(o,{borderWidth:s.ref?1.2:2, pointRadius:ch.points&&!s.ref?3.5:0, pointHoverRadius:s.ref?0:4.5, pointBackgroundColor:col, pointBorderColor:surf, pointBorderWidth:1.5,
+        tension:0, stepped:s.step?'before':false, spanGaps:false, borderDash:s.ref?[3,4]:(s.dash||[]), fill:false, order:1});
+    }
+    return o;
+  });
+  const n = L.length;
+  const everyK = (chart) => { const w = (chart.chartArea && chart.chartArea.width) || chart.width; const maxT = Math.max(3, Math.floor(w/58)); return Math.ceil(n/maxT); };
+  return new Chart(canvas, {
+    type: baseType,
+    data:{labels:L, datasets:ds},
+    plugins:[VL],
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:false,
+      interaction:{mode:'index', intersect:false},
+      layout:{padding:{top:10, right: hasLine ? (ch.dec>=3 ? 60 : 50) : 8}},
+      plugins:{
+        vlabels:{dec:ch.dec, ink:ink, halo:surf},
+        legend:{display:ch.S.filter(s=>!s.ref).length>1, position:'top', align:'start',
+          labels:{color:ink2, boxWidth:10, boxHeight:10, usePointStyle:true, pointStyle:'rectRounded', padding:12, font:{family:cst('--sans').split(',')[0].replace(/"/g,''), size:12},
+            filter:i=>!i.text.startsWith('_'), sort:(a,b)=>a.datasetIndex-b.datasetIndex}},
+        tooltip:{itemSort:(a,b)=>a.datasetIndex-b.datasetIndex, backgroundColor:cst('--ink'), titleColor:cst('--bg'), bodyColor:cst('--bg'), padding:10, cornerRadius:6, boxPadding:4,
+          titleFont:{family:'IBM Plex Mono', weight:'500'}, bodyFont:{family:'IBM Plex Sans KR', size:12},
+          filter:i=>!i.dataset._ref && i.raw!=null,
+          callbacks:{
+            label:i=>` ${i.dataset.label}: ${nf(i.raw,ch.dec)} ${ch.u.split(' ')[0]}`,
+            footer: ch.balance ? (items)=>{ const a=items.find(x=>x.datasetIndex===0), b=items.find(x=>x.datasetIndex===1); return a&&b?`수지: ${nf(a.raw-b.raw,ch.dec)} 십억 달러`:''; } : undefined
+          }}
+      },
+      scales:{
+        x:{grid:{display:false}, border:{color:rs},
+           ticks:{maxRotation:0, autoSkip:false,
+             color:c=> c.index===n-1 ? ink : muted,
+             font:c=>({family:'IBM Plex Mono', size:11, weight: c.index===n-1 ? '600' : '400'}),
+             callback:function(v, idx){ const k = everyK(this.chart); return (n-1-idx)%k===0 ? this.getLabelForValue(v) : ''; }}},
+        y:{beginAtZero: ch.zeroBase!==false && baseType==='bar', grace: baseType==='bar' ? '24%' : '10%', border:{display:false},
+           grid:{color:ctx=> ctx.tick && ctx.tick.value===0 ? rs : rule, lineWidth:1},
+           ticks:{color:muted, maxTicksLimit:6, font:{family:'IBM Plex Mono', size:11}, callback:(v,i,tk)=>{ const st = tk.length>1 ? Math.abs(tk[1].value-tk[0].value) : 1; return nf(v, st<0.1?2:st<1?1:0); }}}
+      }
+    }
+  });
+}
+
+function render(c){
+  charts.forEach(x=>x.destroy()); charts=[];
+  kpis(c);
+  const main = document.getElementById('main');
+  main.innerHTML = '';
+  sections(c).forEach(sec=>{
+    const s = document.createElement('section'); s.className='blk'; s.id='s'+sec.n;
+    s.innerHTML = `<div class="blk-h"><span class="n">${sec.n.padStart(2,'0')}</span><h2>${sec.t}</h2><span class="sub">${sec.sub}</span></div><div class="grid"></div>`;
+    const g = s.querySelector('.grid');
+    sec.charts.forEach((ch,ci)=>{
+      const card = document.createElement('article'); card.className='card'+(ch.wide?' wide':'');
+      const id = `c${sec.n}_${ci}`;
+      card.innerHTML = `<h3>${ch.t}</h3><span class="unit">${ch.u}</span><div class="ch"${ch.horizontal?` style="height:${ch.L.length*27+56}px"`:''}><canvas id="${id}" role="img" aria-label="${C[c].ko} ${ch.t} 차트"></canvas></div>`+
+        (ch.note?`<p class="note">${ch.note}</p>`:'')+`<details><summary>데이터 표 보기</summary><div class="tbl"></div></details>`;
+      g.appendChild(card);
+      const det = card.querySelector('details');
+      det.addEventListener('toggle',()=>{ if(det.open && !det._b){ det.querySelector('.tbl').innerHTML=buildTable(ch); det._b=true; } });
+      charts.push(makeChart(card.querySelector('canvas'), ch));
+    });
+    main.appendChild(s);
+  });
+}
+
+let cur = 'EZ';
+function select(c, push){
+  cur = c;
+  document.querySelectorAll('.tab').forEach(b=>{ const on=b.dataset.c===c; b.setAttribute('aria-selected',on); b.tabIndex=on?0:-1; });
+  render(c);
+  if(push){ try{ history.replaceState(null,'','#'+c); }catch(e){} }
+  try{ localStorage.setItem('ecp-tab', c); }catch(e){}
+}
+const tl = document.getElementById('tablist');
+ORDER.forEach(c=>{
+  const b = document.createElement('button'); b.className='tab'; b.role='tab'; b.dataset.c=c; b.id='tab-'+c;
+  b.innerHTML = `${C[c].en}<span class="ko">${C[c].ko}</span>`;
+  b.addEventListener('click',()=>select(c,true));
+  tl.appendChild(b);
+});
+tl.addEventListener('keydown',e=>{
+  const i = ORDER.indexOf(cur);
+  if(e.key==='ArrowRight'||e.key==='ArrowLeft'){ e.preventDefault(); const n = ORDER[(i+(e.key==='ArrowRight'?1:ORDER.length-1))%ORDER.length]; select(n,true); document.getElementById('tab-'+n).focus(); }
+});
+let start = (location.hash||'').replace('#','');
+if(!ORDER.includes(start)){ try{ start = localStorage.getItem('ecp-tab'); }catch(e){ start=null; } }
+if(!ORDER.includes(start)) start='EZ';
+document.getElementById('asOf').textContent = fD(M.asOf);
+document.getElementById('dfrNow').textContent = nf(M.pol.dfr,2)+'%';
+document.getElementById('mroNow').textContent = nf(M.pol.mro,2)+'%';
+document.getElementById('polDate').textContent = '('+fD(M.pol.date)+' 결정 반영)';
+document.getElementById('periods').innerHTML = '<b>기간</b> 연간 '+YR+'년(이민은 '+M.yearsM[0]+'–'+M.yearsM[4]+'년), 분기 '+M.qs[0].replace('-','')+'–'+M.qs[M.qs.length-1].replace('-','')+', 월간 '+fD(M.months[0])+'–'+fD(M.months[M.months.length-1])+'(최근 60개월). 미발표 시점은 공란.';
+if(window.Chart){
+  Chart.defaults.font.family = '"IBM Plex Sans KR", system-ui, sans-serif';
+  select(start,false);
+  const rerender = ()=>render(cur);
+  try{ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', rerender); }catch(e){}
+  new MutationObserver(rerender).observe(document.documentElement,{attributes:true, attributeFilter:['data-theme']});
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(rerender);
+} else {
+  document.getElementById('main').innerHTML = '<p>차트 라이브러리를 불러오지 못했습니다. 새로고침해 주세요.</p>';
+}
+</script>
+
+</body></html>

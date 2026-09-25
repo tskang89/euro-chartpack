@@ -1,0 +1,59 @@
+name: 차트팩 갱신
+
+on:
+  schedule:
+    # 월요일 05:00 UTC. Eurostat 은 평일 오전(CET)에 새 수치를 올린다.
+    # GitHub 예약은 몇 시간 밀릴 수 있으나 주간 작업이라 문제가 되지 않는다.
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+    inputs:
+      check_only:
+        description: "쓰지 않고 대조만 한다 (무엇이 달라지는지 먼저 보기)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write          # 갱신된 index.html 을 되커밋한다
+
+concurrency:
+  group: chartpack
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 의존성 설치
+        run: pip install --quiet -r requirements.txt
+
+      - name: 빌드
+        run: |
+          python build/build.py ${{ inputs.check_only && '--check' || '' }}
+
+      - name: 갱신분 되커밋
+        if: ${{ !inputs.check_only }}
+        run: |
+          git config user.name  "chartpack-bot"
+          git config user.email "chartpack-bot@users.noreply.github.com"
+          git add index.html
+          if git diff --staged --quiet; then
+            echo "달라진 수치가 없다 — 커밋 생략"
+            exit 0
+          fi
+          git commit -m "차트팩 갱신 $(date -u +%Y-%m-%d)"
+          for i in 1 2 3; do
+            if git push; then echo "완료 (시도 $i)"; exit 0; fi
+            git pull --rebase --autostash origin main || exit 1
+            sleep 3
+          done
+          echo "::error::되커밋 실패"
+          exit 1
