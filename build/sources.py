@@ -83,10 +83,7 @@ ANNUAL = {
 # 이유가 제각각이라 한 번에 묶을 수 없다. 옮기기 전까지는 이전 판의 값을 그대로
 # 물려 쓴다(build.py 의 carry). 물려 쓴 계열은 빌드 로그에 남는다.
 #
-#   trA trQ      교역. 데이터셋이 유로지역(ext_st_easitc)과 개별국(ei_eteu27_2020_m)
-#                으로 갈리고, 역내·역외 구분이 나라마다 다르다.
-#   kr           대한국 교역. Comext(DS-045409)는 배포 API 와 다른 경로다.
-CARRY_OVER = ["trA", "trQ", "kr"]
+CARRY_OVER = []
 
 
 # ------------------------------------------------- 계열마다 다른 처리
@@ -162,3 +159,23 @@ ROUND_MODE = {"fxUsd": "decimal", "fxKrw": "decimal"}
 IMM_FILTERS = dict(citizen="TOTAL", agedef="REACH", age="TOTAL",
                    unit="NR", sex="T")
 IMM_CARRY_BLOCKS = ["EZ"]
+
+
+# ------------------------------------------------------------------ 교역
+# 유로지역과 개별국이 다른 데이터셋을 쓴다. '전체'의 뜻도 다르다.
+#
+#   유로지역  ext_st_easitc. 전체 = 역내(EA21) + 역외(EXT_EA21).
+#             회원국끼리의 거래도 유로지역의 교역으로 친다.
+#   개별국    ei_eteu27_2020_m. 전체 = 대세계(WORLD), 역외 = EU 27개국 밖.
+#             기준이 유로지역이 아니라 EU 라는 점에 주의.
+#
+# 금액은 달러 환산이다. 월별 금액에 그달 평균 EUR/USD 를 곱하고 더한다.
+# 연·분기 환율로 한 번에 곱하면 달마다 다른 환율이 뭉개져 값이 달라진다.
+TRADE_EURO = ("ext_st_easitc", dict(indic_et="TRD_VAL", sitc06="TOTAL"),
+              {"intra": "EA21", "extra": "EXT_EA21"})
+TRADE_COUNTRY = ("ei_eteu27_2020_m", dict(unit="MIO-EUR-NSA", indic="ET-T"),
+                 {"total": "WORLD", "extra": "EXT_EU27_2020"})
+
+# 대한국 교역. 유로지역은 위 데이터셋에 상대국 KR 이 있지만, 개별국은 상대가
+# 집계뿐이라 Comext 를 따로 불러야 한다(comext.py 참고).
+KR = "KR"

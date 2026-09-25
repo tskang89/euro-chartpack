@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import re
 import sys
@@ -24,6 +25,7 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE / "build"))
 
+import comext                                                    # noqa: E402
 import ecb                                                       # noqa: E402
 import eurostat                                                  # noqa: E402
 import sources                                                   # noqa: E402
@@ -109,18 +111,71 @@ def gather(spec: dict, periods: list[str], since: str, label: str) -> tuple[dict
     return out, raw
 
 
+def shift_month(month: str, step: int) -> str:
+    y, m = int(month[:4]), int(month[5:7]) + step
+    return f"{y + (m - 1) // 12}-{(m - 1) % 12 + 1:02d}"
+
+
+def roll_axis(prev: dict) -> dict:
+    """기간 축을 자료가 실제로 있는 데까지 민다.
+
+    달력으로 계산하지 않고 '값이 있는 마지막 시점'에서 되짚는다. 통계마다
+    발표가 늦는 정도가 달라, 달력으로 밀면 아직 나오지도 않은 달이 빈칸으로
+    붙는다.
+
+    기준은 그 주기에서 가장 빨리 나오는 것으로 잡는다 — 월간은 HICP, 분기는
+    GDP, 연간은 명목 GDP, 이민은 그 자체. 주가지수 축(monthsS)만 한 달 더
+    길다. 진행 중인 달의 시세를 보여 주기 때문이다.
+    """
+    meta = json.loads(json.dumps(prev["meta"]))
+    ez = sources.GEO["EZ"]
+
+    def last_of(dataset, **filters):
+        got = eurostat.series(dataset, [ez], since="2015", **filters).get(ez, {})
+        return max(got) if got else None
+
+    m_end = last_of("prc_hicp_minr", coicop18="TOTAL", unit="RCH_A")
+    q_end = last_of("namq_10_gdp", s_adj="SCA", unit="CLV_PCH_PRE", na_item="B1GQ")
+    y_end = last_of("nama_10_gdp", unit="CP_MEUR", na_item="B1GQ")
+    im = eurostat.series("migr_imm1ctz", ["DE"], since="2015",
+                         **sources.IMM_FILTERS).get("DE", {})
+    ym_end = max(im) if im else None
+
+    if m_end:
+        n = len(meta["months"])
+        meta["months"] = [shift_month(m_end, -(n - 1 - i)) for i in range(n)]
+        meta["monthsS"] = meta["months"] + [shift_month(m_end, 1)]
+        meta["hicpItemMonth"] = m_end
+    if q_end:
+        y, q = int(q_end[:4]), int(q_end[-1])
+        n = len(meta["qs"])
+        seq = []
+        for i in range(n - 1, -1, -1):
+            qq = q - i
+            seq.append(f"{y + (qq - 1) // 4}-Q{(qq - 1) % 4 + 1}")
+        meta["qs"] = seq
+    if y_end:
+        n = len(meta["years"])
+        meta["years"] = [str(int(y_end) - (n - 1 - i)) for i in range(n)]
+    if ym_end:
+        n = len(meta["yearsM"])
+        meta["yearsM"] = [str(int(ym_end) - (n - 1 - i)) for i in range(n)]
+        meta["immYear"] = ym_end
+
+    moved = [k for k in ("months", "qs", "years", "yearsM")
+             if meta[k] != prev["meta"][k]]
+    log(f"  기간 축 — 월 {meta['months'][-1]} / 분기 {meta['qs'][-1]} / "
+        f"연 {meta['years'][-1]} / 이민 {meta['yearsM'][-1]}"
+        + (f"  (밀린 축: {moved})" if moved else "  (그대로)"))
+    meta["asOf"] = datetime.date.today().isoformat()
+    return meta
+
+
 def build(prev: dict) -> dict:
-    # 기간 축(months·qs·years)은 이전 판의 것을 그대로 쓴다. 아직 옮기지 못한
-    # 계열(sources.CARRY_OVER)이 이 길이에 맞춰 물려 오기 때문이다. 축을 늘리면
-    # 그 계열들만 짧아져 차트가 어긋난다.
-    #
-    # 그래서 지금 이 빌드는 "있는 기간의 수치를 최신으로 고치는" 일까지만 한다.
-    # 새 달을 붙이려면 남은 계열을 먼저 API 로 옮겨야 한다. 그 전에 축만 늘리면
-    # 안 된다.
-    meta = prev["meta"]
+    meta = roll_axis(prev)
     months, qs, years = meta["months"], meta["qs"], meta["years"]
 
-    data: dict = {"meta": json.loads(json.dumps(meta))}
+    data: dict = {"meta": meta}
     for blk in sources.GEO:
         data[blk] = {}
 
@@ -228,6 +283,71 @@ def build(prev: dict) -> dict:
         except eurostat.EurostatError as exc:
             log(f"  [실패] 이민 — {exc}")
 
+    # --- 교역 ---
+    try:
+        fxm = ecb.monthly_fx("USD", f"{years[0]}-01")
+        ds_e, f_e, p_e = sources.TRADE_EURO
+        ds_c, f_c, p_c = sources.TRADE_COUNTRY
+
+        def usd(rows: dict, scale: float) -> dict[str, float]:
+            """월별 유로 금액을 그달 환율로 달러 환산."""
+            return {m: v * scale * fxm[m] for m, v in rows.items() if m in fxm}
+
+        def roll(usd_rows: dict) -> tuple[list, list]:
+            """(연간 합, 분기 합). 달이 다 차지 않은 구간은 내지 않는다."""
+            ya: dict[str, list] = {}
+            qa: dict[str, list] = {}
+            for m, v in usd_rows.items():
+                y, mm = m[:4], int(m[5:7])
+                ya.setdefault(y, []).append(v)
+                qa.setdefault(f"{y}-Q{(mm - 1) // 3 + 1}", []).append(v)
+            return ([half_up(sum(ya[y]), 0) if len(ya.get(y, [])) == 12 else None
+                     for y in years],
+                    [half_up(sum(qa[q]), 0) if len(qa.get(q, [])) == 3 else None
+                     for q in qs])
+
+        since = f"{years[0]}-01"
+        for blk, geo in sources.GEO.items():
+            euro = blk == "EZ"
+            ds, filt, part = (ds_e, f_e, p_e) if euro else (ds_c, f_c, p_c)
+            trA: dict[str, list] = {}
+            trQ: dict[str, list] = {}
+            for flow, tot_key, ext_key in (("EXP", "ex", "xex"),
+                                           ("IMP", "im", "xim")):
+                ext = eurostat.series(ds, [geo], since=since, stk_flow=flow,
+                                      partner=part["extra"], **filt).get(geo, {})
+                if euro:
+                    intra = eurostat.series(ds, [geo], since=since, stk_flow=flow,
+                                            partner=part["intra"],
+                                            **filt).get(geo, {})
+                    tot = {m: intra.get(m, 0) + ext.get(m, 0)
+                           for m in set(intra) | set(ext)}
+                else:
+                    tot = eurostat.series(ds, [geo], since=since, stk_flow=flow,
+                                          partner=part["total"],
+                                          **filt).get(geo, {})
+                trA[tot_key], trQ[tot_key] = roll(usd(tot, 1.0))
+                trA[ext_key], trQ[ext_key] = roll(usd(ext, 1.0))
+            data[blk]["trA"], data[blk]["trQ"] = trA, trQ
+
+            # 대한국 교역. 유로지역은 같은 데이터셋에 상대국이 있고,
+            # 개별국은 Comext 를 따로 부른다.
+            kr: dict[str, list] = {}
+            for flow, key in (("EXP", "ex"), ("IMP", "im")):
+                if euro:
+                    rows = eurostat.series(ds_e, [geo], since=since,
+                                           stk_flow=flow, partner=sources.KR,
+                                           **f_e).get(geo, {})
+                    kr[key], _ = roll(usd(rows, 1.0))
+                else:
+                    cf = comext.EXPORT if flow == "EXP" else comext.IMPORT
+                    rows = comext.monthly_value(geo, sources.KR, cf, since)
+                    kr[key], _ = roll(usd(rows, 1e-6))   # 낱 유로 -> 백만
+            data[blk]["kr"] = kr
+        log("  교역 trA/trQ/kr  ext_st_easitc·ei_eteu27_2020_m·Comext (달러 환산)")
+    except (eurostat.EurostatError, ecb.EcbError, comext.ComextError) as exc:
+        log(f"  [실패] 교역 — {exc}")
+
     # --- 주가지수 (월말 종가) ---
     # 기간 축이 또 다르다. monthsS 는 진행 중인 달까지 포함해 한 달 더 길다.
     msx = meta.get("monthsS") or months
@@ -283,9 +403,17 @@ def build(prev: dict) -> dict:
     carried = []
     for blk in sources.IMM_CARRY_BLOCKS:
         for key in ("imm", "immR"):
-            if key in prev.get(blk, {}):
-                data[blk][key] = prev[blk][key]
+            old_vals = prev.get(blk, {}).get(key)
+            if old_vals is None:
+                continue
+            if meta["yearsM"] == prev["meta"]["yearsM"]:
+                data[blk][key] = old_vals
                 carried.append(f"{blk}.{key}")
+            else:
+                # 축이 밀렸는데 물려 쓰면 옛 연도 값이 새 연도 자리에 앉는다.
+                # 빈칸이 낫다.
+                data[blk][key] = [None] * len(meta["yearsM"])
+                log(f"  [경고] {blk}.{key} — 축이 밀려 물려 쓸 수 없다. 비운다.")
     for blk in sources.GEO:
         for key in sources.CARRY_OVER:
             if key in prev.get(blk, {}):
@@ -347,7 +475,13 @@ def main() -> int:
     data = build(prev)
 
     log("\n지금 index.html 과 대조:")
-    diffs = compare(data, prev)
+    if data["meta"]["months"] != prev["meta"]["months"]:
+        log("기간 축이 밀렸다 — 이전 판과 값을 자리별로 견줄 수 없다.")
+        log(f"  이전 {prev['meta']['months'][-1]} -> 지금 "
+            f"{data['meta']['months'][-1]}")
+        diffs = 0
+    else:
+        diffs = compare(data, prev)
     log(f"→ 달라진 계열 {diffs}개" if diffs else "→ 모든 계열이 같다")
 
     if args.check:
