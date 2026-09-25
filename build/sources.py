@@ -86,9 +86,7 @@ ANNUAL = {
 #   trA trQ      교역. 데이터셋이 유로지역(ext_st_easitc)과 개별국(ei_eteu27_2020_m)
 #                으로 갈리고, 역내·역외 구분이 나라마다 다르다.
 #   kr           대한국 교역. Comext(DS-045409)는 배포 API 와 다른 경로다.
-#   stk stkR     주가지수. Yahoo Finance 는 공식 API 가 아니라 언제든 막힐 수 있다.
-#                무인 작업에 그대로 매달면 안 된다.
-CARRY_OVER = ["trA", "trQ", "kr", "stk", "stkR"]
+CARRY_OVER = ["trA", "trQ", "kr"]
 
 
 # ------------------------------------------------- 계열마다 다른 처리

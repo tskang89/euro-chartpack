@@ -27,6 +27,7 @@ sys.path.insert(0, str(BASE / "build"))
 import ecb                                                       # noqa: E402
 import eurostat                                                  # noqa: E402
 import sources                                                   # noqa: E402
+import stocks                                                    # noqa: E402
 
 TEMPLATE = BASE / "template.html"
 OUTPUT = BASE / "index.html"
@@ -226,6 +227,33 @@ def build(prev: dict) -> dict:
                 f"(유로지역은 그리스 결측으로 물려 씀)")
         except eurostat.EurostatError as exc:
             log(f"  [실패] 이민 — {exc}")
+
+    # --- 주가지수 (월말 종가) ---
+    # 기간 축이 또 다르다. monthsS 는 진행 중인 달까지 포함해 한 달 더 길다.
+    msx = meta.get("monthsS") or months
+    closes = stocks.all_closes(msx[0], msx[-1], log)
+    for blk in sources.GEO:
+        rows = closes.get(blk)
+        if not rows:
+            # 받지 못한 지수는 이전 판을 물려 쓴다. 길이가 달라지면 그때는
+            # 비워 둔다 — 옛 숫자를 새 달의 값인 척 밀어 넣으면 안 된다.
+            old_lvl = prev.get(blk, {}).get("stk") or []
+            data[blk]["stk"] = (old_lvl if len(old_lvl) == len(msx)
+                                else [None] * len(msx))
+            data[blk]["stkR"] = (prev.get(blk, {}).get("stkR") or [])[:len(msx)]                 or [None] * len(msx)
+            continue
+        data[blk]["stk"] = [None if msx[i] not in rows else half_up(rows[msx[i]], 1)
+                            for i in range(len(msx))]
+        # 등락률은 반올림 전 종가로 낸다. 첫 달은 직전 달 종가가 있어야 한다.
+        y, m = int(msx[0][:4]), int(msx[0][5:7])
+        before = f"{y - 1}-12" if m == 1 else f"{y}-{m - 1:02d}"
+        chain = [rows.get(before)] + [rows.get(x) for x in msx]
+        data[blk]["stkR"] = [
+            None if (chain[i] is None or chain[i - 1] is None)
+            else half_up((chain[i] / chain[i - 1] - 1) * 100, 1)
+            for i in range(1, len(chain))]
+    if closes:
+        log(f"  월  stk/stkR  Yahoo Finance    {len(closes)}/{len(stocks.SYMBOLS)}개 지수")
 
     # --- ECB: 환율과 정책금리 ---
     try:
