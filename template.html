@@ -271,7 +271,7 @@ function sections(c){
     {n:'15', t:'소매판매 · 소비자 신뢰', sub:'월간 · 계절조정', charts:[
       {t:'소매판매', u:'물량지수(2021=100)', type:'line', L:LM, dec:1, zeroBase:false, S:[
         {n:'소매판매',d:d.rt,col:'--s1'},{n:'_2021=100',d:LM.map(()=>100),col:'--ref',ref:true}],
-       note:'자동차·연료 제외 소매업(NACE G47) 판매 물량, 계절·영업일수 조정. 자료: Eurostat sts_trtu_m.'},
+       note:'자동차 제외 소매업(NACE G47) 판매 물량, 계절·영업일수 조정. 연료 소매는 포함된다. 자료: Eurostat sts_trtu_m.'},
       {t:'소비자 신뢰지수', u:'응답 균형(%p)', type:'line', L:LM, dec:1, S:[{n:'소비자 신뢰지수',d:d.cc,col:'--s2'}],
        note:'EC 소비자 서베이. 0보다 낮으면 비관적 응답 우위.'}
     ]},
