@@ -24,6 +24,7 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE / "build"))
 
+import ecb                                                       # noqa: E402
 import eurostat                                                  # noqa: E402
 import sources                                                   # noqa: E402
 
@@ -46,7 +47,7 @@ def previous() -> dict:
     return json.loads(m.group(1))
 
 
-def half_up(value: float, digits: int):
+def half_up(value: float, digits: int, mode: str = "binary"):
     """사람이 쓰는 반올림 — 5는 올린다.
 
     파이썬 기본 round 는 5를 짝수 쪽으로 보낸다(601866.5 -> 601866). 통계표는
@@ -57,7 +58,8 @@ def half_up(value: float, digits: int):
     담고 있는 값은 2.40499999… 라서 2.40 이 맞다. 원본 차트팩도 그 값으로
     반올림했다. str 를 거치면 없는 정밀도를 지어내는 셈이 된다."""
     q = Decimal(1).scaleb(-digits)
-    d = Decimal(value).quantize(q, rounding=ROUND_HALF_UP)
+    base = Decimal(str(value)) if mode == "decimal" else Decimal(value)
+    d = base.quantize(q, rounding=ROUND_HALF_UP)
     return int(d) if digits <= 0 else float(d)
 
 
@@ -143,8 +145,119 @@ def build(prev: dict) -> dict:
                 for a, b in zip(raw["y10"][blk], de)]
         log("  파생  spr     (10년물 − 독일 10년물, bp)")
 
+    # --- 품목별 소비자물가 (가로 막대) ---
+    item_month = meta[sources.ITEM_MONTH_KEY]
+    codes = sorted({c for v in sources.ITEMS.values() for c in v})
+    try:
+        doc = eurostat.fetch("prc_hicp_minr",
+                             sorted(set(sources.CODES)), since=item_month,
+                             coicop18=codes, unit="RCH_A")
+        dims = doc["id"]
+        gi, ci, ti = dims.index("geo"), dims.index("coicop18"), dims.index("time")
+        tbl = {(k[gi], k[ci]): v for k, v in eurostat.decode(doc).items()
+               if k[ti] == item_month}
+        for key, wanted in sources.ITEMS.items():
+            for blk, geo in sources.GEO.items():
+                data[blk][key] = [
+                    None if tbl.get((geo, c)) is None else half_up(tbl[(geo, c)], 1)
+                    for c in wanted]
+            log(f"  품목 {key:7} prc_hicp_minr    {item_month} 기준 {len(wanted)}항목")
+    except eurostat.EurostatError as exc:
+        log(f"  [실패] 품목별 물가 — {exc}")
+
+    # --- 경상수지 ---
+    try:
+        fxq = ecb.quarterly_fx("USD", f"{years[0]}-Q1")
+        for blk, geo in sources.GEO.items():
+            partner = sources.CA_PARTNER.get(geo, sources.CA_DEFAULT)
+            eur = eurostat.series("ei_bpm6ca_q", [geo], since=f"{years[0]}-Q1",
+                                  unit="MIO_EUR", partner=partner,
+                                  **sources.CA_FILTERS).get(geo, {})
+            pct = eurostat.series("ei_bpm6ca_q", [geo], since=f"{years[0]}-Q1",
+                                  unit="PC_GDP", partner=partner,
+                                  **sources.CA_FILTERS).get(geo, {})
+            # 분기 금액을 그 분기 환율로 달러 환산(10억 달러)
+            usd = {q: v / 1000 * fxq[q] for q, v in eur.items() if q in fxq}
+            data[blk]["caQ"] = [None if q not in usd else half_up(usd[q], 1) for q in qs]
+            data[blk]["caQp"] = [None if pct.get(q) is None else half_up(pct[q], 1)
+                                 for q in qs]
+            # 연간은 분기 환산액의 합. 네 분기가 다 있어야 한 해로 친다.
+            ann: dict[str, list] = {}
+            for q, v in usd.items():
+                ann.setdefault(q[:4], []).append(v)
+            data[blk]["caA"] = [half_up(sum(ann[y]), 1) if len(ann.get(y, [])) == 4
+                                else None for y in years]
+            # GDP 대비 비율은 유로끼리 나눈다. 달러 환산액을 쓰면 환율이
+            # 분자에만 걸려 비율이 뒤틀린다. 분기 비율을 평균 내는 것도 안 된다
+            # — 분기마다 다른 GDP 를 같은 무게로 세게 된다.
+            eur_ann: dict[str, list] = {}
+            for q, v in eur.items():
+                eur_ann.setdefault(q[:4], []).append(v)
+            gdp = data[blk].get("gdpEur") or [None] * len(years)
+            out = []
+            for i, y in enumerate(years):
+                g = gdp[i] if i < len(gdp) else None
+                qv = eur_ann.get(y, [])
+                out.append(half_up(sum(qv) / g * 100, 1)
+                           if len(qv) == 4 and g else None)
+            data[blk]["caAp"] = out
+        log("  분기 caQ/caQp/caA/caAp  ei_bpm6ca_q + ECB EXR (달러 환산)")
+    except (eurostat.EurostatError, ecb.EcbError) as exc:
+        log(f"  [실패] 경상수지 — {exc}")
+
+    # --- 이민 (연간, 기간 축이 다르다) ---
+    ym = meta.get("yearsM") or []
+    if ym:
+        try:
+            live = {b: g for b, g in sources.GEO.items()
+                    if b not in sources.IMM_CARRY_BLOCKS}
+            imm = eurostat.series("migr_imm1ctz", sorted(live.values()),
+                                  since=ym[0], **sources.IMM_FILTERS)
+            pop = eurostat.series("demo_gind", sorted(live.values()),
+                                  since=ym[0], indic_de="AVG")
+            for blk, geo in live.items():
+                rows = imm.get(geo, {})
+                data[blk]["imm"] = [None if rows.get(y) is None
+                                    else half_up(rows[y] / 1000, 1) for y in ym]
+                data[blk]["immR"] = [
+                    None if (rows.get(y) is None or not pop.get(geo, {}).get(y))
+                    else half_up(rows[y] / pop[geo][y] * 100, 2) for y in ym]
+            log(f"  연  imm/immR migr_imm1ctz     {len(live)}개국 "
+                f"(유로지역은 그리스 결측으로 물려 씀)")
+        except eurostat.EurostatError as exc:
+            log(f"  [실패] 이민 — {exc}")
+
+    # --- ECB: 환율과 정책금리 ---
+    try:
+        for key, (cur, dig) in sources.FX_MONTHLY.items():
+            got = ecb.monthly_fx(cur, months[0])
+            mode = sources.ROUND_MODE.get(key, "binary")
+            meta[key] = [None if got.get(p) is None else half_up(got[p], dig, mode)
+                         for p in months]
+        for key, cur in sources.FX_ANNUAL.items():
+            got = ecb.annual_fx(cur, years[0])
+            meta[key] = [got.get(y) for y in years]
+        rates = {k: ecb.month_end(ecb.series("FM", key, months[0]))
+                 for k, key in sources.POLICY.items()}
+        for key, got in rates.items():
+            meta[key] = [None if got.get(p) is None else half_up(got[p], 2)
+                         for p in months]
+        daily = ecb.series("FM", sources.POLICY["dfr"], months[0])
+        last = sorted(daily)[-1]
+        meta["pol"] = {"date": _decision_date(daily), "dfr": daily[last],
+                       "mro": ecb.series("FM", sources.POLICY["mro"],
+                                         months[0])[last]}
+        log(f"  ECB   환율·정책금리      최근 결정 {meta['pol']['date']}")
+    except ecb.EcbError as exc:
+        log(f"  [실패] ECB — {exc}")
+
     # 아직 못 옮긴 계열은 이전 판에서 그대로
     carried = []
+    for blk in sources.IMM_CARRY_BLOCKS:
+        for key in ("imm", "immR"):
+            if key in prev.get(blk, {}):
+                data[blk][key] = prev[blk][key]
+                carried.append(f"{blk}.{key}")
     for blk in sources.GEO:
         for key in sources.CARRY_OVER:
             if key in prev.get(blk, {}):
@@ -162,6 +275,16 @@ def build(prev: dict) -> dict:
             for key in missing:
                 data[blk][key] = prev[blk][key]
     return data
+
+
+def _decision_date(daily: dict[str, float]) -> str:
+    """값이 마지막으로 바뀐 날 = 그 금리를 정한 결정이 발효된 날."""
+    days = sorted(daily)
+    last = daily[days[-1]]
+    for day in reversed(days):
+        if daily[day] != last:
+            return days[days.index(day) + 1]
+    return days[0]
 
 
 # ------------------------------------------------------------------ 대조
