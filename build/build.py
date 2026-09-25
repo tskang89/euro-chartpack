@@ -265,21 +265,41 @@ def build(prev: dict) -> dict:
     ym = meta.get("yearsM") or []
     if ym:
         try:
-            live = {b: g for b, g in sources.GEO.items()
-                    if b not in sources.IMM_CARRY_BLOCKS}
-            imm = eurostat.series("migr_imm1ctz", sorted(live.values()),
-                                  since=ym[0], **sources.IMM_FILTERS)
-            pop = eurostat.series("demo_gind", sorted(live.values()),
-                                  since=ym[0], indic_de="AVG")
-            for blk, geo in live.items():
-                rows = imm.get(geo, {})
+            geos = sorted(set(sources.EA_MEMBERS) | set(sources.GEO.values()))
+            imm = eurostat.series("migr_imm1ctz", geos, since=ym[0],
+                                  **sources.IMM_FILTERS)
+            pop = eurostat.series("demo_gind", geos, since=ym[0],
+                                  indic_de="AVG")
+
+            # 유로지역은 21개국을 모두 더한다. 한 나라라도 빠진 해는 비운다.
+            ez_imm, ez_pop, missing = [], [], []
+            for y in ym:
+                gone = [g for g in sources.EA_MEMBERS
+                        if imm.get(g, {}).get(y) is None]
+                if gone:
+                    ez_imm.append(None)
+                    ez_pop.append(None)
+                    missing = gone          # 가장 최근 해의 미발표국을 남긴다
+                    continue
+                ez_imm.append(sum(imm[g][y] for g in sources.EA_MEMBERS))
+                ez_pop.append(sum(pop[g][y] for g in sources.EA_MEMBERS
+                                  if pop.get(g, {}).get(y) is not None))
+
+            for blk, geo in sources.GEO.items():
+                if blk == "EZ":
+                    rows = {y: v for y, v in zip(ym, ez_imm) if v is not None}
+                    pops = {y: v for y, v in zip(ym, ez_pop) if v is not None}
+                else:
+                    rows, pops = imm.get(geo, {}), pop.get(geo, {})
                 data[blk]["imm"] = [None if rows.get(y) is None
                                     else half_up(rows[y] / 1000, 1) for y in ym]
                 data[blk]["immR"] = [
-                    None if (rows.get(y) is None or not pop.get(geo, {}).get(y))
-                    else half_up(rows[y] / pop[geo][y] * 100, 2) for y in ym]
-            log(f"  연  imm/immR migr_imm1ctz     {len(live)}개국 "
-                f"(유로지역은 그리스 결측으로 물려 씀)")
+                    None if (rows.get(y) is None or not pops.get(y))
+                    else half_up(rows[y] / pops[y] * 100, 2) for y in ym]
+            meta["immMissing"] = missing
+            log(f"  연  imm/immR migr_imm1ctz     유로지역 "
+                f"{len(sources.EA_MEMBERS)}개국"
+                + (f", {meta['immYear']}년 미발표 {missing}" if missing else ""))
         except eurostat.EurostatError as exc:
             log(f"  [실패] 이민 — {exc}")
 
@@ -401,19 +421,6 @@ def build(prev: dict) -> dict:
 
     # 아직 못 옮긴 계열은 이전 판에서 그대로
     carried = []
-    for blk in sources.IMM_CARRY_BLOCKS:
-        for key in ("imm", "immR"):
-            old_vals = prev.get(blk, {}).get(key)
-            if old_vals is None:
-                continue
-            if meta["yearsM"] == prev["meta"]["yearsM"]:
-                data[blk][key] = old_vals
-                carried.append(f"{blk}.{key}")
-            else:
-                # 축이 밀렸는데 물려 쓰면 옛 연도 값이 새 연도 자리에 앉는다.
-                # 빈칸이 낫다.
-                data[blk][key] = [None] * len(meta["yearsM"])
-                log(f"  [경고] {blk}.{key} — 축이 밀려 물려 쓸 수 없다. 비운다.")
     for blk in sources.GEO:
         for key in sources.CARRY_OVER:
             if key in prev.get(blk, {}):
