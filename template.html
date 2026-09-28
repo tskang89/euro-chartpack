@@ -320,59 +320,62 @@ function globalSections(c){
        note:'연중 인구. 자료: 세계은행 SP.POP.TOTL.'}
     ]},
     {n:'2', t:'실질 GDP 성장률', sub:'연간 · 분기', charts:[
-      {t:'실질 GDP 성장률 (연간)', u:'%', type:'bar', L:LY, dec:1, S:[
+      {t:'연간 실질 GDP 성장률', u:'%', type:'bar', L:LY, dec:1, S:[
         {n:'성장률',d:d.ga,col:'--s1'}],
        note:'자료: OECD 국민계정(G20).'},
-      {t:'실질 GDP 성장률 (분기)', u:'%', type:'line', L:LQ, dec:1, S:[
+      {t:'분기 실질 GDP 성장률', u:'%', type:'line', L:LQ, dec:1, S:[
         {n:'전기비',d:d.gqq,col:'--s1'},
         {n:'전년동기비',d:d.gqy,col:'--s2'},
         {n:'_0',d:LQ.map(()=>0),col:'--ref',ref:true}],
        note:'계절조정 실질 GDP. 자료: OECD 분기 국민계정(G20).'},
     ]},
     {n:'3', t:'대외교역', sub:'월간 · 상품 · 달러', charts:[
-      {t:'상품 수출입 (연간)', u:'십억 달러', type:'bar', L:LY, dec:1, balance:true, S:[
+      {t:'연간 수출입', u:'십억 달러', type:'bar', L:LY, dec:1, balance:true, S:[
         {n:'수출',d:(d.trA||{}).ex,col:'--s1'},
         {n:'수입',d:(d.trA||{}).im,col:'--s2'}],
        note:gen+'의 대세계 상품 교역액. 월별 달러 금액을 열두 달 모두 있는 해만 더했다.'},
-      {t:'상품 수출입 (분기)', u:'십억 달러', type:'line', L:LQ, dec:1, balance:true, S:[
+      {t:'분기 수출입', u:'십억 달러', type:'line', L:LQ, dec:1, balance:true, S:[
         {n:'수출',d:(d.trQ||{}).ex,col:'--s1'},
         {n:'수입',d:(d.trQ||{}).im,col:'--s2'}],
        note:'월별 금액을 석 달 모두 있는 분기만 더했다.'},
-      {t:'상품 수출입 (월간)', u:'십억 달러', type:'line', L:LM, dec:1, balance:true, wide:true, S:[
+      {t:'월간 수출입', u:'십억 달러', type:'line', L:LM, dec:1, balance:true, wide:true, S:[
         {n:'수출',d:d.exUSD,col:'--s1'},
         {n:'수입',d:d.imUSD,col:'--s2'}],
        note:'계절조정 기준. 자료: OECD.'}
     ]},
     {n:'4', t:'경상수지', sub:'연간 · 분기 · 달러', charts:[
-      {t:'경상수지 (연간)', u:'십억 달러', type:'bar', L:LY, dec:1, S:[
+      {t:'연간 경상수지', u:'십억 달러', type:'bar', L:LY, dec:1, S:[
         {n:'경상수지',d:d.caA,col:'--s1'}],
        note:gen+'의 대세계 경상수지. 시장환율 기준 달러. 자료: OECD 국제수지.'},
-      {t:'경상수지 (분기)', u:'십억 달러', type:'line', L:LQ, dec:1, S:[
+      {t:'분기 경상수지', u:'십억 달러', type:'line', L:LQ, dec:1, S:[
         {n:'경상수지',d:d.caQ,col:'--s1'},
         {n:'_0',d:LQ.map(()=>0),col:'--ref',ref:true}],
        note:'원계열(계절 미조정). 분기 합이 연간 공표치와 맞는 것을 확인했다.'}
     ]},
     {n:'5', t:'소비자물가', sub:'월간 · % 전년동월비', charts:[
-      {t:'소비자물가 상승률 (연간)', u:'% 전년비', type:'bar', L:LY, dec:1, S:[
+      {t:'연간 소비자물가 상승률', u:'% 전년비', type:'bar', L:LY, dec:1, S:[
         {n:'소비자물가',d:d.cpiA,col:'--s1'}],
        note:'연평균 기준. 자료: OECD.'},
-      {t:'소비자물가 상승률 (월간)', u:'% 전년동월비', type:'line', L:LM, dec:1, S:[
+      {t:'월간 소비자물가 상승률', u:'% 전년동월비', type:'line', L:LM, dec:1, S:[
         {n:'소비자물가',d:d.cpiM,col:'--s1'},
         {n:'_2%',d:LM.map(()=>2),col:'--ref',ref:true}],
        note:'각국 소비자물가지수(CPI) 기준. 유로지역 탭은 HICP 라 산출 기준이 달라 수준을 그대로 견주기 어렵다. 자료: OECD.'+(noCPI?' 일본은 OECD 에 비교 가능한 계열이 없어 비워 두었다.':'')}
     ]},
-    {n:'6', t:'실업률', sub:'월간 · 계절조정', charts:[
-      {t:'실업률', u:'%', type:'line', L:LM, dec:1, S:[
+    {n:'6', t:'실업률', sub:'연간 · 월간', charts:[
+      {t:'연간 실업률', u:'%', type:'line', L:LY, dec:1, points:true, S:[
+        {n:'실업률',d:d.unA,col:'--s1'}],
+       note:'연평균. 자료: OECD.'+(noUN?' 중국은 비교 가능한 계열이 없어 비워 두었다.':'')},
+      {t:'월간 실업률', u:'% · 계절조정', type:'line', L:LM, dec:1, S:[
         {n:'실업률',d:d.unM,col:'--s1'}],
        note:'OECD 표준 정의(15~64세 노동력 대비).'+(noUN?' 중국은 OECD 에 비교 가능한 계열이 없어 비워 두었다. 중국은 도시조사실업률을 따로 발표하나 기준이 다르다.':'')}
     ]},
     {n:'7', t:'주가', sub:'월간 · 월말 종가', charts:[
-      {t:C[c].idx, u:'지수', type:'line', L:LMS, dec:1, S:[
+      {t:C[c].idx+' 지수', u:'포인트', type:'line', L:LMS, dec:0, zeroBase:false, S:[
         {n:C[c].idx,d:d.stk,col:'--s1'}],
        note:'월말 종가(Yahoo Finance 기준).'+(M.stkNote?' '+M.stkNote+'.':'')},
-      {t:'주가 등락률', u:'% 전월비', type:'bar', L:LMS, dec:1, S:[
-        {n:'등락률',d:d.stkR,col:'--s1'}],
-       note:'월말 종가 기준 전월 대비 등락률.'}
+      {t:C[c].idx+' 월간 상승률', u:'% 전월비', type:'bar', L:LMS, dec:1, S:[
+        {n:'월간 상승률',d:d.stkR,col:'--s2'}],
+       note:'월말 종가 기준 전월 대비 등락률.'+(M.stkNote?' '+M.stkNote+'.':'')}
     ]},
     {n:'8', t:'금리', sub:'월간 · 장기 · 단기', charts:[
       {t:'정책금리와 장단기 금리', u:'%', type:'line', L:LM, dec:2, S:[
@@ -390,7 +393,7 @@ function globalSections(c){
          : '1달러당 자국 통화. 상승은 자국 통화 약세. 월평균. 자료: OECD.'}
     ]},
     {n:'10', t:'생산', sub:'월간 · 지수 · 계절조정', charts:[
-      {t:'산업생산지수', u:'지수', type:'line', L:LM, dec:1, S:[
+      {t:'월간 산업생산', u:'지수', type:'line', L:LM, dec:1, S:[
         {n:'산업생산',d:d.ipM,col:'--s1'}],
        note:'OECD 산업생산 물량지수. 기준연도가 유로지역 차트(2021=100)와 다를 수 있어 수준을 그대로 견주지 않는다.'}
     ]},

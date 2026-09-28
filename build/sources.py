@@ -258,6 +258,10 @@ OECD_FX = ("KEI", dict(MEASURE="CC", UNIT_MEASURE="XDC_USD"), 2)
 #
 # 이 흐름은 나라를 키로 좁히면 500 이 난다. "all" 로 받아 코드에서 거른다.
 # 26개 지역이 와도 한 번 호출이라 오히려 빠르다.
+# 연간 실업률. KEI 의 같은 계열을 연간 주기로 받는다. 중국은 월간과 마찬가지로
+# 없다.
+OECD_ANNUAL_UNEMP = dict(MEASURE="UNEMP", UNIT_MEASURE="PT_LF")
+
 # 연간 계열. 기간 축은 meta.years.
 #
 # 실질 성장률은 G20 흐름의 연간 주기를 쓴다. OECD 회원국 전용 흐름

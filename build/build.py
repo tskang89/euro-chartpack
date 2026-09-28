@@ -515,6 +515,21 @@ def build(prev: dict) -> dict:
         log(f"  [실패] 해외 연간 성장률 — {exc} (이전 값을 물려 쓴다)")
         keep_old("ga", years)
 
+    # 연간 실업률
+    try:
+        got = oecd.series(oecd.KEI, "USA+CHN+JPN+KOR.A.......", years[0],
+                          **sources.OECD_ANNUAL_UNEMP)
+        for blk, area in sources.OECD_AREAS.items():
+            rows = got.get(area, {})
+            data[blk]["unA"] = [None if rows.get(y) is None
+                                else half_up(rows[y], 1) for y in years]
+        miss = [b for b, a in sources.OECD_AREAS.items() if not got.get(a)]
+        log("  해외 unA    OECD KEI(연)  연간 실업률"
+            + (f"  없음: {miss}" if miss else ""))
+    except oecd.OecdError as exc:
+        log(f"  [실패] 해외 연간 실업률 — {exc} (이전 값을 물려 쓴다)")
+        keep_old("unA", years)
+
     # 연간 소비자물가
     cpi_a = {}
     for _, (fname, fkey) in sources.OECD_ANNUAL_CPI.items():
