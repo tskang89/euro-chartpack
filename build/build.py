@@ -480,6 +480,56 @@ def build(prev: dict) -> dict:
         log(f"  [실패] 해외 환율 — {exc} (이전 값을 물려 쓴다)")
         keep_old("fxU", months)
 
+    # 연간 실질 GDP 성장률
+    try:
+        got = oecd.series(oecd.QNA_G20, "all", years[0],
+                          **sources.OECD_ANNUAL_GROWTH)
+        for blk, area in sources.OECD_AREAS.items():
+            rows = got.get(area, {})
+            data[blk]["ga"] = [None if rows.get(y) is None
+                               else half_up(rows[y], 1) for y in years]
+        have = sum(1 for b in sources.OECD_AREAS for v in data[b]["ga"]
+                   if v is not None)
+        log(f"  해외 ga     OECD QNA(연)  값 {have}/"
+            f"{len(sources.OECD_AREAS)*len(years)}")
+    except oecd.OecdError as exc:
+        log(f"  [실패] 해외 연간 성장률 — {exc} (이전 값을 물려 쓴다)")
+        keep_old("ga", years)
+
+    # 연간 소비자물가
+    cpi_a = {}
+    for _, (fname, fkey) in sources.OECD_ANNUAL_CPI.items():
+        try:
+            cpi_a.update(oecd.series(getattr(oecd, fname), fkey, years[0]))
+        except oecd.OecdError as exc:
+            log(f"  [경고] 연간 물가 {fkey[:12]} — {exc}")
+    if cpi_a:
+        for blk, area in sources.OECD_AREAS.items():
+            rows = cpi_a.get(area, {})
+            data[blk]["cpiA"] = [None if rows.get(y) is None
+                                 else half_up(rows[y], 1) for y in years]
+        have = sum(1 for b in sources.OECD_AREAS for v in data[b]["cpiA"]
+                   if v is not None)
+        log(f"  해외 cpiA   OECD 물가     값 {have}/"
+            f"{len(sources.OECD_AREAS)*len(years)}")
+    else:
+        keep_old("cpiA", years)
+
+    # 총인구. 화면은 백만 명 단위라 사람 수를 나눈다.
+    try:
+        got = oecd.series(oecd.POP, sources.OECD_POP_KEY, years[0],
+                          **sources.OECD_POP_MATCH)
+        for blk, area in sources.OECD_AREAS.items():
+            rows = got.get(area, {})
+            data[blk]["pop"] = [None if rows.get(y) is None
+                                else half_up(rows[y] / 1000, 2) for y in years]
+        miss = [b for b, a in sources.OECD_AREAS.items() if not got.get(a)]
+        log("  해외 pop    OECD 국민계정  총인구"
+            + (f"  없음: {miss}" if miss else ""))
+    except oecd.OecdError as exc:
+        log(f"  [실패] 해외 인구 — {exc} (이전 값을 물려 쓴다)")
+        keep_old("pop", years)
+
     # 연간·분기 교역은 월별 달러 금액을 더해서 만든다. 유로지역과 달리
     # 역내·역외 구분이 없으므로 전체(ex·im)만 둔다.
     for blk in sources.OECD_AREAS:

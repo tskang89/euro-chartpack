@@ -312,11 +312,17 @@ function globalSections(c){
   const noCPI = c==='JP', noUN = c==='CN', noBCI = c==='JP';
   return [
     {n:'1', t:'실질 GDP 성장률', sub:'분기 · 계절조정', charts:[
-      {t:'실질 GDP 성장률', u:'%', type:'line', L:LQ, dec:1, S:[
+      {t:'실질 GDP 성장률 (연간)', u:'%', type:'bar', L:LY, dec:1, S:[
+        {n:'성장률',d:d.ga,col:'--s1'}],
+       note:'자료: OECD 국민계정(G20).'},
+      {t:'실질 GDP 성장률 (분기)', u:'%', type:'line', L:LQ, dec:1, S:[
         {n:'전기비',d:d.gqq,col:'--s1'},
         {n:'전년동기비',d:d.gqy,col:'--s2'},
         {n:'_0',d:LQ.map(()=>0),col:'--ref',ref:true}],
-       note:'계절조정 실질 GDP. 자료: OECD 분기 국민계정(G20).'}
+       note:'계절조정 실질 GDP. 자료: OECD 분기 국민계정(G20).'},
+      {t:'총인구', u:'백만 명', type:'bar', L:LY, dec:2, S:[
+        {n:'총인구',d:d.pop,col:'--s3'}],
+       note:'국민계정 기준 연평균 총인구. 자료: OECD.'+(c==='CN'?' 중국은 OECD 국민계정에 없어 비워 두었다.':'')}
     ]},
     {n:'2', t:'대외교역', sub:'월간 · 상품 · 달러', charts:[
       {t:'상품 수출입 (연간)', u:'십억 달러', type:'bar', L:LY, dec:1, balance:true, S:[
@@ -333,7 +339,10 @@ function globalSections(c){
        note:'계절조정 기준. 자료: OECD.'}
     ]},
     {n:'3', t:'소비자물가', sub:'월간 · % 전년동월비', charts:[
-      {t:'소비자물가 상승률', u:'% 전년동월비', type:'line', L:LM, dec:1, S:[
+      {t:'소비자물가 상승률 (연간)', u:'% 전년비', type:'bar', L:LY, dec:1, S:[
+        {n:'소비자물가',d:d.cpiA,col:'--s1'}],
+       note:'연평균 기준. 자료: OECD.'},
+      {t:'소비자물가 상승률 (월간)', u:'% 전년동월비', type:'line', L:LM, dec:1, S:[
         {n:'소비자물가',d:d.cpiM,col:'--s1'},
         {n:'_2%',d:LM.map(()=>2),col:'--ref',ref:true}],
        note:'각국 소비자물가지수(CPI) 기준. 유로지역 탭은 HICP 라 산출 기준이 달라 수준을 그대로 견주기 어렵다. 자료: OECD.'+(noCPI?' 일본은 OECD 에 비교 가능한 계열이 없어 비워 두었다.':'')}

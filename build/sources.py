@@ -258,6 +258,23 @@ OECD_FX = ("KEI", dict(MEASURE="CC", UNIT_MEASURE="XDC_USD"), 2)
 #
 # 이 흐름은 나라를 키로 좁히면 500 이 난다. "all" 로 받아 코드에서 거른다.
 # 26개 지역이 와도 한 번 호출이라 오히려 빠르다.
+# 연간 계열. 기간 축은 meta.years.
+#
+# 실질 성장률은 G20 흐름의 연간 주기를 쓴다. OECD 회원국 전용 흐름
+# (DF_TABLE1_EXPENDITURE_GROWTH)에는 중국이 없는데 G20 에는 있다.
+OECD_ANNUAL_GROWTH = dict(TRANSACTION="B1GQ", TRANSFORMATION="G1",
+                          UNIT_MEASURE="PC", SECTOR="S1", FREQ="A")
+
+# 연간 물가도 월간과 같은 사정이다 — 일본만 COICOP 2018 판에 있다.
+OECD_ANNUAL_CPI = {
+    "USA+KOR+CHN": ("PRICES_99", "USA+KOR+CHN.A.N.CPI.PA._T.N.GY"),
+    "JPN": ("PRICES_18", "JPN.A.N.CPI.PA._T.N.GY"),
+}
+
+# 총인구. 중국은 이 흐름에 없다(OECD 회원국 국민계정이라 그렇다).
+OECD_POP_KEY = "A.USA+CHN+JPN+KOR.........."
+OECD_POP_MATCH = dict(TRANSACTION="POP", UNIT_MEASURE="PS")
+
 OECD_QUARTERLY = {
     "gqq": dict(TRANSACTION="B1GQ", TRANSFORMATION="G1", UNIT_MEASURE="PC",
                 SECTOR="S1"),
