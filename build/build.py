@@ -499,6 +499,28 @@ def build(prev: dict) -> dict:
         log(f"  해외 {name:6} OECD BOP      값 {have}/"
             f"{len(sources.OECD_AREAS)*len(axis)}")
 
+    # 주택가격. 지수로 와서 전년비 상승률을 직접 만든다. 앞 해가 있어야
+    # 첫 해 값이 나오므로 한 해 일찍부터 받는다.
+    try:
+        got = oecd.series(oecd.HOUSE, "USA+CHN+JPN+KOR.A...",
+                          str(int(years[0]) - 1), years[-1],
+                          MEASURE="HPI", UNIT_MEASURE="IX")
+        for blk, area in sources.OECD_AREAS.items():
+            rows = got.get(area, {})
+            out = []
+            for y in years:
+                cur, prev_y = rows.get(y), rows.get(str(int(y) - 1))
+                out.append(None if (cur is None or not prev_y)
+                           else half_up((cur / prev_y - 1) * 100, 1))
+            data[blk]["hpi"] = out
+        have = sum(1 for b in sources.OECD_AREAS for v in data[b]["hpi"]
+                   if v is not None)
+        log(f"  해외 hpi    OECD 주택가격  전년비 값 {have}/"
+            f"{len(sources.OECD_AREAS)*len(years)}")
+    except oecd.OecdError as exc:
+        log(f"  [실패] 해외 주택가격 — {exc} (이전 값을 물려 쓴다)")
+        keep_old("hpi", years)
+
     # 연간 실질 GDP 성장률
     try:
         got = oecd.series(oecd.QNA_G20, "all", years[0],
@@ -574,6 +596,29 @@ def build(prev: dict) -> dict:
         log(f"  해외 {name:6} 세계은행       {label} 값 {have}/"
             f"{len(worldbank.AREAS)*len(years)}")
 
+    # 경상수지 / GDP. 분모는 언제나 그 해 연간 명목 GDP 다. 그래서 이 계산은
+    # 명목 GDP 를 받은 뒤라야 한다 — 앞에 두었다가 전부 빈칸이 된 적이 있다.
+    #
+    # 분기는 연율로 맞춘다. 분기 금액을 연간 GDP 의 1/4 로 나눠야 연간 비율과,
+    # 유로 탭의 분기 비율과 같은 눈금에서 읽힌다.
+    for blk in sources.OECD_AREAS:
+        by_year = {y: g for y, g in zip(years, data[blk].get("gdpUSD") or []) if g}
+        ca_a = data[blk].get("caA") or []
+        data[blk]["caAp"] = [
+            None if (c is None or not by_year.get(y))
+            else half_up(c / (by_year[y] * 1000) * 100, 1)
+            for y, c in zip(years, ca_a)]
+        ca_q = data[blk].get("caQ") or []
+        data[blk]["caQp"] = [
+            None if (c is None or not by_year.get(q[:4]))
+            else half_up(c / (by_year[q[:4]] * 1000 / 4) * 100, 1)
+            for q, c in zip(qs, ca_q)]
+    got_a = sum(1 for b in sources.OECD_AREAS for v in data[b]["caAp"] if v is not None)
+    got_q = sum(1 for b in sources.OECD_AREAS for v in data[b]["caQp"] if v is not None)
+    log(f"  해외 caAp/caQp  경상수지 ÷ 연간 명목 GDP  값 {got_a}/"
+        f"{len(sources.OECD_AREAS)*len(years)}, {got_q}/"
+        f"{len(sources.OECD_AREAS)*len(qs)}")
+
     # 연간·분기 교역은 월별 달러 금액을 더해서 만든다. 유로지역과 달리
     # 역내·역외 구분이 없으므로 전체(ex·im)만 둔다.
     for blk in sources.OECD_AREAS:
@@ -600,6 +645,18 @@ def build(prev: dict) -> dict:
         data[blk]["trA"] = roll(ya, 12, years)
         data[blk]["trQ"] = roll(qa, 3, qs)
     log("  해외 trA/trQ   월별 달러 교역액을 연·분기로 합산")
+
+    # 대유로 환율 (ECB 기준환율)
+    for blk, cur in sources.ECB_FX_PER_EUR.items():
+        try:
+            rows = ecb.monthly_fx(cur, months[0])
+        except ecb.EcbError as exc:
+            log(f"  [경고] 대유로 환율 {blk} ({cur}) — {exc}")
+            keep_old("fxE", months)
+            continue
+        data[blk]["fxE"] = [None if rows.get(m) is None
+                            else half_up(rows[m], 2) for m in months]
+    log(f"  해외 fxE    ECB EXR       대유로 환율 {list(sources.ECB_FX_PER_EUR)}")
 
     # 미국 환율 칸은 달러지수로 채운다.
     for blk, symbol in sources.DOLLAR_INDEX.items():

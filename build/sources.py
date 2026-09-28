@@ -217,7 +217,6 @@ OECD_MONTHLY = {
     "ipM":   ("KEI", dict(MEASURE="PRVM",   UNIT_MEASURE="IX"), 1),
 
     # 새로 만드는 자리. 유로지역에는 대응 계열이 없거나 출처가 다르다.
-    "i3m":   ("KEI", dict(MEASURE="IR3TIB", UNIT_MEASURE="PA"), 2),
     "bci":   ("KEI", dict(MEASURE="BCICP",  UNIT_MEASURE="PB"), 1),
     # 기업·소비자 심리는 각국 서베이의 '원래 눈금'으로 온다(UNIT=PB).
     # 미국 소비자는 50~85, 중국은 85~120, 한국은 -14~12 처럼 나라마다 척도가
@@ -250,6 +249,11 @@ OECD_FALLBACK = {
                "JPN.M.N.CPI.PA._T.N.GY", 1),
     },
 }
+
+# 대유로 환율. ECB 기준환율에서 받는다(1유로당 자국통화).
+# 미국은 달러지수를 쓰므로 여기 넣지 않는다 — 지수와 환율을 한 축에 겹치면
+# 눈금이 뒤섞인다.
+ECB_FX_PER_EUR = {"KR": "KRW", "JP": "JPY", "CN": "CNY"}
 
 # 대미달러 환율. 미국은 자기 통화라 계열이 없다 — 빈칸으로 둔다.
 OECD_FX = ("KEI", dict(MEASURE="CC", UNIT_MEASURE="XDC_USD"), 2)

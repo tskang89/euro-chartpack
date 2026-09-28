@@ -347,10 +347,17 @@ function globalSections(c){
       {t:'연간 경상수지', u:'십억 달러', type:'bar', L:LY, dec:1, S:[
         {n:'경상수지',d:d.caA,col:'--s1'}],
        note:gen+'의 대세계 경상수지. 시장환율 기준 달러. 자료: OECD 국제수지.'},
+      {t:'연간 경상수지 / GDP', u:'% GDP', type:'bar', L:LY, dec:1, S:[
+        {n:'경상수지 / GDP',d:d.caAp,col:'--s2'}],
+       note:'연간 경상수지를 그 해 연간 명목 GDP 로 나눈 값.'},
       {t:'분기 경상수지', u:'십억 달러', type:'line', L:LQ, dec:1, S:[
         {n:'경상수지',d:d.caQ,col:'--s1'},
         {n:'_0',d:LQ.map(()=>0),col:'--ref',ref:true}],
-       note:'원계열(계절 미조정). 분기 합이 연간 공표치와 맞는 것을 확인했다.'}
+       note:'원계열(계절 미조정). 분기 합이 연간 공표치와 맞는 것을 확인했다.'},
+      {t:'분기 경상수지 / GDP', u:'% GDP · 연율', type:'line', L:LQ, dec:1, S:[
+        {n:'경상수지 / GDP',d:d.caQp,col:'--s2'},
+        {n:'_0',d:LQ.map(()=>0),col:'--ref',ref:true}],
+       note:'분기 금액을 그 해 연간 명목 GDP 의 1/4 로 나눈 연율 기준. 연간 비율과 같은 눈금에서 읽힌다.'}
     ]},
     {n:'5', t:'소비자물가', sub:'월간 · % 전년동월비', charts:[
       {t:'연간 소비자물가 상승률', u:'% 전년비', type:'bar', L:LY, dec:1, S:[
@@ -378,26 +385,33 @@ function globalSections(c){
        note:'월말 종가 기준 전월 대비 등락률.'+(M.stkNote?' '+M.stkNote+'.':'')}
     ]},
     {n:'8', t:'금리', sub:'월간 · 장기 · 단기', charts:[
-      {t:'정책금리와 장단기 금리', u:'%', type:'line', L:LM, dec:2, S:[
+      {t:'정책금리와 10년물 국채금리', u:'%', type:'line', L:LM, dec:2, S:[
         {n:'정책금리',d:d.cbr,col:'--s4'},
-        {n:'단기(3개월)',d:d.i3m,col:'--s2'},
         {n:'10년물 국채',d:d.y10,col:'--s1'}],
-       note:'정책금리는 중앙은행이 정한 금리(자료: BIS). 단기는 3개월 은행간금리, 장기는 10년물 국채수익률(자료: OECD).'+(c==='CN'?' 중국 정책금리는 대출우대금리(LPR) 기준.':'')}
+       note:'정책금리는 중앙은행이 정한 금리(자료: BIS), 10년물은 국채수익률 월평균(자료: OECD).'+(c==='CN'?' 중국 정책금리는 대출우대금리(LPR) 기준.':'')}
     ]},
-    {n:'9', t:'환율', sub:'월간 · 대미달러', charts:[
+    {n:'9', t:'환율', sub:'월간 · 대미달러 · 대유로', charts:[
       {t: c==='US' ? '달러지수 (ICE DXY)' : '대미달러 환율',
-       u: c==='US' ? '지수' : '1달러당', type:'line', L:LM, dec:2, S:[
+       u: c==='US' ? '지수' : '1달러당', type:'line', L:LM, dec:2, zeroBase:false, S:[
         {n: c==='US' ? '달러지수' : '대미달러', d:d.fxU, col:'--s1'}],
        note: c==='US'
          ? 'ICE 달러지수(DXY) 월말 종가. 주요 6개 통화 대비 달러 가치로, 상승은 달러 강세. 다른 탭의 대미달러 환율과는 단위가 다르다. 자료: Yahoo Finance.'
-         : '1달러당 자국 통화. 상승은 자국 통화 약세. 월평균. 자료: OECD.'}
+         : '1달러당 자국 통화. 상승은 자국 통화 약세. 월평균. 자료: OECD.'},
+      ...(c==='US' ? [] : [{t:'대유로 환율', u:'1유로당', type:'line', L:LM, dec:2, zeroBase:false, S:[
+        {n:'대유로',d:d.fxE,col:'--s2'}],
+       note:'1유로당 자국 통화. 상승은 자국 통화 약세. ECB 기준환율 월평균.'}])
     ]},
     {n:'10', t:'생산', sub:'월간 · 지수 · 계절조정', charts:[
       {t:'월간 산업생산', u:'지수', type:'line', L:LM, dec:1, S:[
         {n:'산업생산',d:d.ipM,col:'--s1'}],
        note:'OECD 산업생산 물량지수. 기준연도가 유로지역 차트(2021=100)와 다를 수 있어 수준을 그대로 견주지 않는다.'}
     ]},
-    {n:'11', t:'경기선행지수 · 심리', sub:'월간 · CLI 100 = 장기추세', charts:[
+    {n:'11', t:'주택가격', sub:'연간', charts:[
+      {t:'주택가격 상승률', u:'% 전년비', type:'bar', L:LY, dec:1, S:[
+        {n:'주택가격',d:d.hpi,col:'--s1'}],
+       note:'명목 주택가격지수의 전년비 상승률. 자료: OECD 주택가격 지표.'}
+    ]},
+    {n:'12', t:'경기선행지수 · 심리', sub:'월간 · CLI 100 = 장기추세', charts:[
       {t:'경기선행지수(CLI)', u:'지수', type:'line', L:LM, dec:1, S:[
         {n:'CLI',d:d.cli,col:'--s1'},
         {n:'_장기추세 100',d:LM.map(()=>100),col:'--ref',ref:true}],
@@ -442,7 +456,6 @@ function kpis(c){
     h += item('실업률', d.unM, '', '%', 1, mL);
     h += item('정책금리', d.cbr, '', '%', 2, mL);
     h += item('10년물 금리', d.y10, '', '%', 2, mL);
-    h += item('단기금리', d.i3m, '', '%', 2, mL);
     h += item('수출', d.exUSD, '', '십억$', 1, mL);
     h += item('수입', d.imUSD, '', '십억$', 1, mL);
   }
