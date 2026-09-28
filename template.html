@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta name="robots" content="noindex, nofollow"><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>Euro Area Chart Pack</title>
+<title>Major Economies Chart Pack</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
@@ -40,14 +40,20 @@ h1{font-size:clamp(24px,3.2vw,32px);line-height:1.2;font-weight:700;margin:0;let
 .stamp{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--ink-2);text-align:right}
 .stamp b{font-family:var(--mono);font-weight:500;color:var(--ink)}
 nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;border-bottom:1px solid var(--rule)}
-.tablist{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
-.tablist::-webkit-scrollbar{display:none}
+.tablist{display:flex;gap:6px;flex-wrap:wrap}
+.tablist.sub{margin-top:8px;padding-top:8px;border-top:1px dashed var(--rule)}
 .tab{flex:0 0 auto;appearance:none;border:1px solid var(--rule-strong);background:var(--surface);color:var(--ink-2);font:inherit;font-weight:500;font-size:14px;padding:8px 16px;border-radius:6px;cursor:pointer;display:flex;gap:8px;align-items:baseline}
 .tab .ko{font-size:12px;color:var(--muted)}
 .tab:hover{border-color:var(--accent);color:var(--ink)}
 .tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .tab[aria-selected="true"] .ko{color:var(--accent-ink);opacity:.8}
 .tab:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:620px){
+  .tab{padding:7px 12px;gap:0}
+  .tab .en{display:none}
+  .tab .ko{font-size:14px;color:var(--ink-2)}
+  .tab[aria-selected="true"] .ko{color:var(--accent-ink);opacity:1}
+}
 .kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:8px;overflow:hidden;margin-block:20px 8px}
 .kpi{background:var(--surface);padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
 .kpi .k{font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -87,25 +93,27 @@ footer.src b{color:var(--ink);font-weight:600}
 <div class="wrap">
   <header class="top">
     <div>
-      <p class="eyebrow">Euro Area Macro · Chart Pack</p>
-      <h1>유로지역 경제 차트팩</h1>
+      <p class="eyebrow">Major Economies · Chart Pack</p>
+      <h1>주요국 경제 차트팩</h1>
     </div>
     <div class="stamp">
-      <span>자료 기준일 <b id="asOf"></b> · Eurostat, ECB</span>
+      <span>자료 기준일 <b id="asOf"></b> · Eurostat, ECB, OECD</span>
       <span>ECB 예금금리 <b id="dfrNow"></b> · MRO <b id="mroNow"></b> <span style="color:var(--muted)" id="polDate"></span></span>
     </div>
   </header>
 
-  <nav class="tabs" aria-label="국가 선택">
-    <div class="tablist" role="tablist" id="tablist"></div>
+  <nav class="tabs" aria-label="국가·권역 선택">
+    <div class="tablist" role="tablist" id="tablist" aria-label="권역"></div>
+    <div class="tablist sub" role="tablist" id="tablist2" aria-label="유로지역 회원국" hidden></div>
   </nav>
 
   <div class="kpis" id="kpis" aria-label="최신 주요 지표"></div>
   <main id="main"></main>
 
   <footer class="src">
-    <p><b>자료</b> Eurostat(국민계정 nama_10_gdp·namq_10_gdp·nama_10_pe, HICP prc_hicp_ainr·prc_hicp_minr, 실업률 une_rt_a·une_rt_m, 10년물 국채금리 irt_lt_mcby_m, 산업·서비스 생산 sts_inpr_m·sts_sepr_m, EC 기업·소비자 서베이 ei_bssi_m_r2, 무역 ei_eteu27_2020_m·ext_st_easitc, Comext DS-045409, 재정 gov_10dd_edpt1, 경상수지 ei_bpm6ca_q·bop_gdp6_q, 소매판매 sts_trtu_m, 주택가격 prc_hpi_a, 이민 migr_imm1ctz·demo_gind), Yahoo Finance(주가지수 월말 종가), ECB Data Portal(정책금리 FM, 환율 EXR).</p>
+    <p><b>자료</b> Eurostat(국민계정 nama_10_gdp·namq_10_gdp·nama_10_pe, HICP prc_hicp_ainr·prc_hicp_minr, 실업률 une_rt_a·une_rt_m, 10년물 국채금리 irt_lt_mcby_m, 산업·서비스 생산 sts_inpr_m·sts_sepr_m, EC 기업·소비자 서베이 ei_bssi_m_r2, 무역 ei_eteu27_2020_m·ext_st_easitc, Comext DS-045409, 재정 gov_10dd_edpt1, 경상수지 ei_bpm6ca_q·bop_gdp6_q, 소매판매 sts_trtu_m, 주택가격 prc_hpi_a, 이민 migr_imm1ctz·demo_gind), Yahoo Finance(주가지수 월말 종가), ECB Data Portal(정책금리 FM, 환율 EXR), OECD(미국·중국·일본·한국 — 단기지표 DSD_KEI: 소비자물가·장단기금리·실업률·산업생산·기업소비자심리·상품수출입).</p>
     <p><b>유로지역</b> 2026년 불가리아 가입 이후 기준인 EA21(고정 구성, 과거 소급) 기준. 10년물 금리의 유로지역 값은 Eurostat의 유로지역 수렴기준 금리(EA).</p>
+    <p><b>유로지역 밖</b> 미국·중국·일본·한국은 출처가 달라 계열이 적고 정의도 같지 않다. 물가는 HICP 가 아니라 각국 CPI, 심리지수는 EC 서베이가 아니라 OECD 합성지수(100 = 장기평균)다. 수준을 유로지역 탭과 그대로 견주지 않는다. 일본 소비자물가·기업심리와 중국 실업률은 OECD 에 비교 가능한 계열이 없어 비워 두었다.</p>
     <p><b>달러 환산</b> 명목 GDP는 ECB 연평균 EUR/USD 기준환율, 수출입은 월별 금액을 해당 월 평균 환율로 환산한 뒤 합산.</p>
     <p id="periods"></p>
   </footer>
@@ -124,9 +132,17 @@ const C = {
   NL:{en:'Netherlands', ko:'네덜란드', gen:'네덜란드', idx:'AEX'},
   BE:{en:'Belgium', ko:'벨기에', gen:'벨기에', idx:'BEL 20'},
   IE:{en:'Ireland', ko:'아일랜드', gen:'아일랜드', idx:'ISEQ All Share'},
-  AT:{en:'Austria', ko:'오스트리아', gen:'오스트리아', idx:'ATX'}
+  AT:{en:'Austria', ko:'오스트리아', gen:'오스트리아', idx:'ATX'},
+  US:{en:'US', ko:'미국', gen:'미국', idx:'S&P 500'},
+  CN:{en:'China', ko:'중국', gen:'중국', idx:'상하이종합'},
+  JP:{en:'Japan', ko:'일본', gen:'일본', idx:'닛케이 225'},
+  KR:{en:'Korea', ko:'한국', gen:'한국', idx:'KOSPI'}
 };
-const ORDER = ['EZ','DE','FR','IT','ES','NL','BE','IE','AT'];
+// 1단은 권역, 2단은 유로 회원국. 유로지역을 고르면 2단이 펼쳐진다.
+const TOP = ['US','CN','EZ','JP','KR'];
+const EUZONE = ['EZ','DE','FR','IT','ES','NL','BE','IE','AT'];
+const ORDER = TOP.concat(EUZONE.slice(1));
+const isEuro = c => EUZONE.indexOf(c) >= 0;
 const fM = m => m.slice(2,4)+'.'+m.slice(5);
 const fQ = q => q.slice(2,4)+'Q'+q.slice(-1);
 const LM = M.months.map(fM), LQ = M.qs.map(fQ), LY = M.years, LMS = M.monthsS.map(fM);
@@ -138,7 +154,7 @@ const div = (a,k) => a.map(v => v==null?null:v/k);
 const cst = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const lastIdx = a => { for(let i=a.length-1;i>=0;i--) if(a[i]!=null) return i; return -1; };
 
-function sections(c){
+function euroSections(c){
   const d = DATA[c], nm = C[c].ko, isEZ = c==='EZ';
   const gdpUsd = d.gdpEur.map((v,i)=> v*M.fxA[i]/1e6);
   const trLab = isEZ ? '역외(유로지역 외)' : '역외(EU 외)';
@@ -288,10 +304,66 @@ function sections(c){
   ];
 }
 
+// 유로지역 밖(미국·중국·일본·한국). 자료가 OECD 라 계열이 적고 정의도 다르다.
+// 유로지역 전용 차트(역내외 교역·EU 기준 재정·HICP 품목별·이민 등)는 여기 없다.
+function globalSections(c){
+  const d = DATA[c], gen = C[c].gen;
+  const gap = s => s===null ? ' 해당 계열이 OECD 에 없어 비워 둔다.' : '';
+  const noCPI = c==='JP', noUN = c==='CN', noBCI = c==='JP';
+  return [
+    {n:'1', t:'소비자물가', sub:'월간 · % 전년동월비', charts:[
+      {t:'소비자물가 상승률', u:'% 전년동월비', type:'line', L:LM, dec:1, S:[
+        {n:'소비자물가',d:d.cpiM,col:'--s1'},
+        {n:'_2%',d:LM.map(()=>2),col:'--ref',ref:true}],
+       note:'각국 소비자물가지수(CPI) 기준. 유로지역 탭은 HICP 라 산출 기준이 달라 수준을 그대로 견주기 어렵다. 자료: OECD.'+(noCPI?' 일본은 OECD 에 비교 가능한 계열이 없어 비워 두었다.':'')}
+    ]},
+    {n:'2', t:'실업률', sub:'월간 · 계절조정', charts:[
+      {t:'실업률', u:'%', type:'line', L:LM, dec:1, S:[
+        {n:'실업률',d:d.unM,col:'--s1'}],
+       note:'OECD 표준 정의(15~64세 노동력 대비).'+(noUN?' 중국은 OECD 에 비교 가능한 계열이 없어 비워 두었다. 중국은 도시조사실업률을 따로 발표하나 기준이 다르다.':'')}
+    ]},
+    {n:'3', t:'금리', sub:'월간 · 장기 · 단기', charts:[
+      {t:'장단기 금리', u:'%', type:'line', L:LM, dec:2, S:[
+        {n:'10년물 국채',d:d.y10,col:'--s1'},
+        {n:'단기(3개월)',d:d.i3m,col:'--s2'}],
+       note:'장기는 10년물 국채수익률, 단기는 3개월 은행간금리. 자료: OECD.'}
+    ]},
+    {n:'4', t:'주가', sub:'월간 · 월말 종가', charts:[
+      {t:C[c].idx, u:'지수', type:'line', L:LMS, dec:1, S:[
+        {n:C[c].idx,d:d.stk,col:'--s1'}],
+       note:'월말 종가(Yahoo Finance 기준).'+(M.stkNote?' '+M.stkNote+'.':'')},
+      {t:'주가 등락률', u:'% 전월비', type:'bar', L:LMS, dec:1, S:[
+        {n:'등락률',d:d.stkR,col:'--s1'}],
+       note:'월말 종가 기준 전월 대비 등락률.'}
+    ]},
+    {n:'5', t:'생산', sub:'월간 · 지수 · 계절조정', charts:[
+      {t:'산업생산지수', u:'지수', type:'line', L:LM, dec:1, S:[
+        {n:'산업생산',d:d.ipM,col:'--s1'}],
+       note:'OECD 산업생산 물량지수. 기준연도가 유로지역 차트(2021=100)와 다를 수 있어 수준을 그대로 견주지 않는다.'}
+    ]},
+    {n:'6', t:'대외교역', sub:'월간 · 상품 · 달러', charts:[
+      {t:'상품 수출입', u:'십억 달러', type:'line', L:LM, dec:1, balance:true, S:[
+        {n:'수출',d:d.exUSD,col:'--s1'},
+        {n:'수입',d:d.imUSD,col:'--s2'}],
+       note:gen+'의 대세계 상품 교역액. 계절조정 기준, 월별 달러 표시. 자료: OECD.'}
+    ]},
+    {n:'7', t:'기업·소비자 심리', sub:'월간 · 지수 · 100 = 장기평균', charts:[
+      {t:'심리지수', u:'지수', type:'line', L:LM, dec:1, S:[
+        {n:'기업',d:d.bci,col:'--s2'},
+        {n:'소비자',d:d.cci,col:'--s1'},
+        {n:'_장기평균 100',d:LM.map(()=>100),col:'--ref',ref:true}],
+       note:'OECD 합성 심리지수. 100 이 장기평균이고 그 위면 평균보다 낙관적이다. 유로지역 탭의 EC 서베이(응답 비율 차)와는 눈금이 다르다.'+(noBCI?' 일본 기업심리는 OECD 에 없어 비워 두었다(일본은 단칸을 따로 발표).':'')}
+    ]}
+  ];
+}
+
+function sections(c){ return isEuro(c) ? euroSections(c) : globalSections(c); }
+
 let charts = [];
 function kpis(c){
   const d = DATA[c];
   const item = (k, arr, lab, unit, dec, lastLabFn) => {
+    if(!arr) return '';            // 그 블록에 없는 계열
     const i = lastIdx(arr); if(i<0) return '';
     const v = arr[i], p = i>0 ? arr[i-1] : null;
     const dv = p==null ? null : v-p;
@@ -302,13 +374,22 @@ function kpis(c){
   };
   const qL = i => M.qs[i].replace('-',' '), mL = i => M.months[i].replace('-','.');
   let h = '';
-  h += item('실질 GDP 전기비', d.gqq, '', '%', 1, qL);
-  h += item('HICP 상승률', d.cpiM, '', '%', 1, mL);
-  h += item('근원 HICP', d.coreM, '', '%', 1, mL);
-  h += item('실업률', d.unM, '', '%', 1, mL);
-  h += item((c==='EZ'?'유로지역':'')+' 10년물 금리', d.y10, '', '%', 2, mL);
-  if(c==='DE') h += `<div class="kpi"><span class="k">대독일 스프레드</span><span class="v">–</span><span class="p"><span>독일 = 기준물</span></span></div>`;
-  else h += item('대독일 스프레드', d.spr, '', 'bp', 0, mL);
+  if(isEuro(c)){
+    h += item('실질 GDP 전기비', d.gqq, '', '%', 1, qL);
+    h += item('HICP 상승률', d.cpiM, '', '%', 1, mL);
+    h += item('근원 HICP', d.coreM, '', '%', 1, mL);
+    h += item('실업률', d.unM, '', '%', 1, mL);
+    h += item((c==='EZ'?'유로지역':'')+' 10년물 금리', d.y10, '', '%', 2, mL);
+    if(c==='DE') h += `<div class="kpi"><span class="k">대독일 스프레드</span><span class="v">–</span><span class="p"><span>독일 = 기준물</span></span></div>`;
+    else h += item('대독일 스프레드', d.spr, '', 'bp', 0, mL);
+  } else {
+    h += item('소비자물가', d.cpiM, '', '%', 1, mL);
+    h += item('실업률', d.unM, '', '%', 1, mL);
+    h += item('10년물 금리', d.y10, '', '%', 2, mL);
+    h += item('단기금리', d.i3m, '', '%', 2, mL);
+    h += item('수출', d.exUSD, '', '십억$', 1, mL);
+    h += item('수입', d.imUSD, '', '십억$', 1, mL);
+  }
   document.getElementById('kpis').innerHTML = h;
 }
 
@@ -502,18 +583,31 @@ function render(c){
 let cur = 'EZ';
 function select(c, push){
   cur = c;
-  document.querySelectorAll('.tab').forEach(b=>{ const on=b.dataset.c===c; b.setAttribute('aria-selected',on); b.tabIndex=on?0:-1; });
+  const euro = isEuro(c);
+  // 1단에서는 유로 회원국 전부가 '유로지역'으로 묶여 보인다.
+  const top = euro ? 'EZ' : c;
+  document.getElementById('tablist2').hidden = !euro;
+  document.querySelectorAll('#tablist .tab').forEach(b=>{
+    const on=b.dataset.c===top; b.setAttribute('aria-selected',on); b.tabIndex=on?0:-1; });
+  document.querySelectorAll('#tablist2 .tab').forEach(b=>{
+    const on=euro && b.dataset.c===c; b.setAttribute('aria-selected',on); b.tabIndex=on?0:-1; });
   render(c);
   if(push){ try{ history.replaceState(null,'','#'+c); }catch(e){} }
   try{ localStorage.setItem('ecp-tab', c); }catch(e){}
 }
 const tl = document.getElementById('tablist');
-ORDER.forEach(c=>{
-  const b = document.createElement('button'); b.className='tab'; b.role='tab'; b.dataset.c=c; b.id='tab-'+c;
-  b.innerHTML = `${C[c].en}<span class="ko">${C[c].ko}</span>`;
+const tl2 = document.getElementById('tablist2');
+const mkTab = (c, host, label) => {
+  const b = document.createElement('button'); b.className='tab'; b.role='tab';
+  b.dataset.c=c; b.id='tab-'+(host===tl2?'sub-':'')+c;
+  b.innerHTML = `<span class="en">${C[c].en}</span><span class="ko">${label||C[c].ko}</span>`;
   b.addEventListener('click',()=>select(c,true));
-  tl.appendChild(b);
-});
+  host.appendChild(b);
+};
+TOP.forEach(c=>mkTab(c, tl));
+// 2단 첫 칸은 '유로 전체'. 1단의 '유로지역'과 같은 블록이지만 자리가 달라
+// 이름을 달리해야 어디를 누른 것인지 헷갈리지 않는다.
+EUZONE.forEach(c=>mkTab(c, tl2, c==='EZ' ? '유로 전체' : null));
 tl.addEventListener('keydown',e=>{
   const i = ORDER.indexOf(cur);
   if(e.key==='ArrowRight'||e.key==='ArrowLeft'){ e.preventDefault(); const n = ORDER[(i+(e.key==='ArrowRight'?1:ORDER.length-1))%ORDER.length]; select(n,true); document.getElementById('tab-'+n).focus(); }
