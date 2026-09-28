@@ -22,7 +22,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # OECD 가 호출이 몰리면 429 를 내고, 그때 뒤로 물러나 기다리느라 실행이
+    # 길어진다. 평소에는 3분이면 끝나지만 여유를 둔다. 한 계열이 끝내 실패해도
+    # 빌드는 이전 값을 물려 쓰고 계속 간다.
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4

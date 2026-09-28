@@ -225,6 +225,38 @@ OECD_MONTHLY = {
     "imUSD": ("KEI", dict(MEASURE="IM",     UNIT_MEASURE="USD"), 1),
 }
 
+# 한 나라만 다른 데이터플로에서 받아야 하는 계열.
+#
+# 일본 물가가 그렇다. KEI 에도, COICOP 1999 판 물가 데이터플로에도 JPN 이
+# 없는데 COICOP 2018 판에는 있다. 미국·한국·중국은 거꾸로 1999 판에만 있다.
+# OECD 가 분류 개편을 나라마다 다른 속도로 하고 있어 생긴 일이다. 한쪽만 보고
+# "일본은 자료가 없다"고 읽기 쉽다 — 실제로 한 번 그렇게 읽었다.
+#
+# FRED 도 뒤져 봤지만 거기 일본 물가는 전부 OECD MEI 출처라 2021~22년에 함께
+# 멈춰 있다. 살아 있는 것은 이 경로뿐이다.
+#
+# {계열: {블록: (흐름 전체 이름, 키, 자릿수)}}. 주 계열이 통째로 비었을 때만 쓴다.
+OECD_FALLBACK = {
+    "cpiM": {
+        "JP": ("OECD.SDD.TPS,DSD_PRICES_COICOP2018@DF_PRICES_C2018_ALL,1.0",
+               "JPN.M.N.CPI.PA._T.N.GY", 1),
+    },
+}
+
+# 대미달러 환율. 미국은 자기 통화라 계열이 없다 — 빈칸으로 둔다.
+OECD_FX = ("KEI", dict(MEASURE="CC", UNIT_MEASURE="XDC_USD"), 2)
+
+# 분기 실질 GDP 성장률. 유로지역 차트와 같은 자리(gqq·gqy)에 들어간다.
+#
+# 이 흐름은 나라를 키로 좁히면 500 이 난다. "all" 로 받아 코드에서 거른다.
+# 26개 지역이 와도 한 번 호출이라 오히려 빠르다.
+OECD_QUARTERLY = {
+    "gqq": dict(TRANSACTION="B1GQ", TRANSFORMATION="G1", UNIT_MEASURE="PC",
+                SECTOR="S1"),
+    "gqy": dict(TRANSACTION="B1GQ", TRANSFORMATION="GY", UNIT_MEASURE="PC",
+                SECTOR="S1"),
+}
+
 # 주가는 OECD 에도 있지만 지수(2021=100)다. 유로지역 차트는 실제 지수 수준을
 # 보여 주므로 여기서도 Yahoo 월말 종가를 쓴다. 그래야 같은 차트가 된다.
 OECD_STOCKS = {"US": "^GSPC", "CN": "000001.SS", "JP": "^N225", "KR": "^KS11"}

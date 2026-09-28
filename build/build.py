@@ -397,8 +397,18 @@ def build(prev: dict) -> dict:
         log(f"  월  stk/stkR  Yahoo Finance    {len(closes)}/{len(stocks.SYMBOLS)}개 지수")
 
     # --- 유로지역 밖 네 나라 (미국·중국·일본·한국) ---
-    # 화면은 아직 이 블록을 보여 주지 않는다. 자료를 먼저 채우고 탭은 나중에
-    # 켠다 — 순서를 바꾸면 빈 탭 넷이 먼저 생긴다.
+    def keep_old(name: str, axis: list) -> None:
+        """받지 못한 계열은 이전 판 값을 물려 쓴다.
+
+        빠뜨리면 그 차트가 통째로 사라진다. OECD 는 호출이 몰리면 429 를 내는데,
+        그때 한 번 실패했다고 화면에서 차트가 없어지면 안 된다. 축 길이가
+        달라졌으면 물려 쓸 수 없으니 그때는 비운다.
+        """
+        for blk in sources.OECD_AREAS:
+            old = prev.get(blk, {}).get(name)
+            data[blk][name] = old if (old and len(old) == len(axis)) \
+                else [None] * len(axis)
+
     key = "+".join(sources.OECD_AREAS.values()) + ".M......."
     flows = {"KEI": oecd.KEI, "FINMARK": oecd.FINMARK}
     for blk in sources.OECD_AREAS:
@@ -407,7 +417,8 @@ def build(prev: dict) -> dict:
         try:
             got = oecd.series(flows[flow], key, months[0], **match)
         except oecd.OecdError as exc:
-            log(f"  [실패] 해외 {name} — {exc}")
+            log(f"  [실패] 해외 {name} — {exc} (이전 값을 물려 쓴다)")
+            keep_old(name, months)
             continue
         have = 0
         for blk, area in sources.OECD_AREAS.items():
@@ -419,6 +430,56 @@ def build(prev: dict) -> dict:
         log(f"  해외 {name:6} OECD {flow:8} 값 {have:4}/"
             f"{len(sources.OECD_AREAS)*len(months)}"
             + (f"  없음: {empty}" if empty else ""))
+
+    # 주 계열이 통째로 빈 블록은 예비 출처에서 다시 받는다.
+    for name, per_block in sources.OECD_FALLBACK.items():
+        for blk, (fflow, fkey, digits) in per_block.items():
+            cur = data.get(blk, {}).get(name)
+            if cur and any(v is not None for v in cur):
+                continue                      # 주 계열로 이미 채워졌다
+            try:
+                got = oecd.series(fflow, fkey, months[0])
+            except oecd.OecdError as exc:
+                log(f"  [실패] 예비 {blk}.{name} — {exc}")
+                continue
+            rows = next(iter(got.values()), {})
+            data[blk][name] = [None if rows.get(m) is None
+                               else half_up(rows[m], digits) for m in months]
+            have = sum(1 for v in data[blk][name] if v is not None)
+            log(f"  예비 {blk}.{name:6} {fflow.split('@')[-1][:24]:24} "
+                f"값 {have}/{len(months)}")
+
+    # 대미달러 환율
+    flow, match, dig = sources.OECD_FX
+    try:
+        got = oecd.series(flows[flow], key, months[0], **match)
+        for blk, area in sources.OECD_AREAS.items():
+            rows = got.get(area, {})
+            data[blk]["fxU"] = [None if rows.get(m) is None
+                                else half_up(rows[m], dig) for m in months]
+        miss = [b for b, a in sources.OECD_AREAS.items() if not got.get(a)]
+        log(f"  해외 fxU    OECD KEI      대미달러 환율"
+            + (f"  없음: {miss} (미국은 자기 통화)" if miss else ""))
+    except oecd.OecdError as exc:
+        log(f"  [실패] 해외 환율 — {exc} (이전 값을 물려 쓴다)")
+        keep_old("fxU", months)
+
+    # 분기 실질 GDP 성장률
+    for name, match in sources.OECD_QUARTERLY.items():
+        try:
+            got = oecd.series(oecd.QNA_G20, "all", qs[0], **match)
+        except oecd.OecdError as exc:
+            log(f"  [실패] 해외 {name} — {exc} (이전 값을 물려 쓴다)")
+            keep_old(name, qs)
+            continue
+        have = 0
+        for blk, area in sources.OECD_AREAS.items():
+            rows = got.get(area, {})
+            data[blk][name] = [None if rows.get(q) is None
+                               else half_up(rows[q], 1) for q in qs]
+            have += sum(1 for v in data[blk][name] if v is not None)
+        log(f"  해외 {name:6} OECD QNA      값 {have:4}/"
+            f"{len(sources.OECD_AREAS)*len(qs)}")
 
     # 주가는 유로지역과 같은 자리를 쓰므로 같은 출처(Yahoo 월말 종가)로 받는다.
     msx2 = meta.get("monthsS") or months

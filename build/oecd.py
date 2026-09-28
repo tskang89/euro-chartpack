@@ -28,6 +28,8 @@ PACE = 0.6
 
 KEI = "OECD.SDD.STES,DSD_KEI@DF_KEI,4.0"
 FINMARK = "OECD.SDD.STES,DSD_STES@DF_FINMARK,4.0"
+# 분기 국민계정. 나라를 키로 좁히면 500 이 나고 "all" 로 받아 걸러야 한다.
+QNA_G20 = "OECD.SDD.NAD,DSD_NAMAIN1@DF_QNA_EXPENDITURE_GROWTH_G20,1.1"
 
 
 class OecdError(RuntimeError):
@@ -54,7 +56,15 @@ def fetch(flow: str, key: str, start: str, end: str | None = None) -> dict:
             return resp.json()
         if resp.status_code == 404:
             raise OecdError(f"{flow} {key}: 그런 계열이 없다 (404)")
+
         last = f"HTTP {resp.status_code}"
+        if resp.status_code == 429:
+            # 호출 제한. 3초씩 쉬는 정도로는 안 풀린다 — 한 번 걸리면 뒤따르는
+            # 계열이 줄줄이 같이 넘어진다. Retry-After 가 오면 그만큼 기다리고,
+            # 없으면 20초부터 배로 늘린다.
+            wait = int(resp.headers.get("Retry-After") or 0) or 20 * (2 ** attempt)
+            time.sleep(min(wait, 180))
+            continue
         time.sleep(3 * (attempt + 1))
     raise OecdError(f"{flow} {key}: {RETRIES}번 시도했으나 실패 ({last})")
 

@@ -1,3 +1,6 @@
 __pycache__/
 _data.json
 .claude/
+
+# 비밀값 — 저장소가 공개라 특히 중요하다.
+.env
