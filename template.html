@@ -309,7 +309,7 @@ function euroSections(c){
 function globalSections(c){
   const d = DATA[c], gen = C[c].gen;
   const gap = s => s===null ? ' 해당 계열이 OECD 에 없어 비워 둔다.' : '';
-  const noCPI = c==='JP', noUN = c==='CN', noBCI = c==='JP';
+  const noCPI = c==='JP', noUN = c==='CN', noBCI = c==='JP', noCore = c==='CN';
   return [
     {n:'1', t:'경제 규모', sub:'연간', charts:[
       {t:'명목 GDP', u:'조 달러', type:'bar', L:LY, dec:2, S:[
@@ -370,12 +370,14 @@ function globalSections(c){
     ]},
     {n:'6', t:'소비자물가', sub:'월간 · % 전년동월비', charts:[
       {t:'연간 소비자물가 상승률', u:'% 전년비', type:'bar', L:LY, dec:1, S:[
-        {n:'소비자물가',d:d.cpiA,col:'--s1'}],
-       note:'연평균 기준. 자료: OECD.'},
+        {n:'헤드라인',d:d.cpiA,col:'--s1'},
+        {n:'근원',d:d.coreA,col:'--s2'}],
+       note:'연평균 기준. 근원은 식품·에너지 제외. 자료: OECD.'+(noCore?' 중국은 근원물가 비교 계열이 OECD 에 없어 비워 두었다.':'')},
       {t:'월간 소비자물가 상승률', u:'% 전년동월비', type:'line', L:LM, dec:1, S:[
-        {n:'소비자물가',d:d.cpiM,col:'--s1'},
+        {n:'헤드라인',d:d.cpiM,col:'--s1'},
+        {n:'근원',d:d.coreM,col:'--s2'},
         {n:'_2%',d:LM.map(()=>2),col:'--ref',ref:true}],
-       note:'각국 소비자물가지수(CPI) 기준. 유로지역 탭은 HICP 라 산출 기준이 달라 수준을 그대로 견주기 어렵다. 자료: OECD.'+(noCPI?' 일본은 OECD 에 비교 가능한 계열이 없어 비워 두었다.':'')}
+       note:'각국 소비자물가지수(CPI) 기준. 근원은 식품·에너지 제외로, 유로 탭의 근원(에너지·식품·주류·담배 제외)과 정의가 조금 다르다. 유로지역 탭은 HICP 라 수준을 그대로 견주기도 어렵다. 자료: OECD.'+(noCPI?' 일본은 OECD 에 비교 가능한 계열이 없어 비워 두었다.':'')}
     ]},
     {n:'7', t:'실업률', sub:'연간 · 월간', charts:[
       {t:'연간 실업률', u:'%', type:'line', L:LY, dec:1, points:true, S:[
@@ -397,7 +399,7 @@ function globalSections(c){
       {t:'정책금리와 10년물 국채금리', u:'%', type:'line', L:LM, dec:2, S:[
         {n:'정책금리',d:d.cbr,col:'--s4'},
         {n:'10년물 국채',d:d.y10,col:'--s1'}],
-       note:'정책금리는 중앙은행이 정한 금리(자료: BIS), 10년물은 국채수익률 월평균(자료: OECD).'+(c==='CN'?' 중국 정책금리는 대출우대금리(LPR) 기준.':'')}
+       note:'정책금리는 중앙은행이 정한 금리(자료: BIS), 10년물은 국채수익률 월평균(자료: OECD).'+(c==='US'?' 연준은 폭 25bp 의 목표범위로 정하는데, 여기서는 그 상단을 적는다(예: 3.50~3.75% 이면 3.75%).':'')+(c==='CN'?' 중국 정책금리는 대출우대금리(LPR) 기준.':'')}
     ]},
     {n:'10', t:'환율', sub:'월간 · 대미달러 · 대유로', charts:[
       {t: c==='US' ? '달러지수 (ICE DXY)' : '대미달러 환율',
@@ -462,6 +464,7 @@ function kpis(c){
     h += item('명목 GDP', d.gdpUSD, '', '조$', 2, i => M.years[i]);
     h += item('실질 GDP 전기비', d.gqq, '', '%', 1, qL);
     h += item('소비자물가', d.cpiM, '', '%', 1, mL);
+    h += item('근원물가', d.coreM, '', '%', 1, mL);
     h += item('실업률', d.unM, '', '%', 1, mL);
     h += item('정책금리', d.cbr, '', '%', 2, mL);
     h += item('10년물 금리', d.y10, '', '%', 2, mL);

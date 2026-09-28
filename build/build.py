@@ -145,10 +145,23 @@ def roll_axis(prev: dict) -> dict:
                          **sources.IMM_FILTERS).get("DE", {})
     ym_end = max(im) if im else None
 
+    # 월간 축은 '자료가 있는 마지막 달'이 아니라 '이번 달'까지 간다.
+    #
+    # 앞서는 HICP 발표월에 맞췄는데, 그러면 발표가 빠른 계열이 느린 계열의
+    # 달력에 갇힌다. 9월에 ECB·연준·한은이 금리를 올렸는데 축이 8월에서
+    # 끝나 차트에 들어갈 자리가 없었다. 정책 변화가 한 달 늦게 보이는 것은
+    # 사무소 브리핑에서 그냥 넘길 일이 아니다.
+    #
+    # 대가는 느린 계열의 오른쪽 끝에 빈칸이 생기는 것이다. 그건 "아직 발표
+    # 전"이라는 사실 그대로라 오히려 읽을 값이 있다.
+    #
+    # hicpItemMonth 는 축과 별개다. 품목별 물가 막대는 '값이 있는 마지막 달'을
+    # 써야 하므로 HICP 발표월을 그대로 둔다.
+    today_m = datetime.date.today().strftime("%Y-%m")
+    n = len(meta["months"])
+    meta["months"] = [shift_month(today_m, -(n - 1 - i)) for i in range(n)]
+    meta["monthsS"] = list(meta["months"])
     if m_end:
-        n = len(meta["months"])
-        meta["months"] = [shift_month(m_end, -(n - 1 - i)) for i in range(n)]
-        meta["monthsS"] = meta["months"] + [shift_month(m_end, 1)]
         meta["hicpItemMonth"] = m_end
     if q_end:
         y, q = int(q_end[:4]), int(q_end[-1])
@@ -379,12 +392,13 @@ def build(prev: dict) -> dict:
     for blk in sources.GEO:
         rows = closes.get(blk)
         if not rows:
-            # 받지 못한 지수는 이전 판을 물려 쓴다. 길이가 달라지면 그때는
-            # 비워 둔다 — 옛 숫자를 새 달의 값인 척 밀어 넣으면 안 된다.
-            old_lvl = prev.get(blk, {}).get("stk") or []
-            data[blk]["stk"] = (old_lvl if len(old_lvl) == len(msx)
-                                else [None] * len(msx))
-            data[blk]["stkR"] = (prev.get(blk, {}).get("stkR") or [])[:len(msx)]                 or [None] * len(msx)
+            # 받지 못한 지수는 이전 판을 시점에 맞춰 물려 쓴다. 자리로
+            # 맞추면 축이 밀린 날 옛 종가가 새 달의 값인 척 앉는다.
+            old_msx = prev.get("meta", {}).get("monthsS") or []
+            for fld in ("stk", "stkR"):
+                old = prev.get(blk, {}).get(fld) or []
+                at = dict(zip(old_msx, old)) if len(old) == len(old_msx) else {}
+                data[blk][fld] = [at.get(m) for m in msx]
             continue
         data[blk]["stk"] = [None if msx[i] not in rows else half_up(rows[msx[i]], 1)
                             for i in range(len(msx))]
@@ -400,17 +414,34 @@ def build(prev: dict) -> dict:
         log(f"  월  stk/stkR  Yahoo Finance    {len(closes)}/{len(stocks.SYMBOLS)}개 지수")
 
     # --- 유로지역 밖 네 나라 (미국·중국·일본·한국) ---
-    def keep_old(name: str, axis: list) -> None:
-        """받지 못한 계열은 이전 판 값을 물려 쓴다.
+    def carried(blk: str, name: str, axis_key: str) -> list:
+        """이전 판의 계열을 이번 축의 같은 시점에 다시 앉힌다.
 
-        빠뜨리면 그 차트가 통째로 사라진다. OECD 는 호출이 몰리면 429 를 내는데,
-        그때 한 번 실패했다고 화면에서 차트가 없어지면 안 된다. 축 길이가
-        달라졌으면 물려 쓸 수 없으니 그때는 비운다.
+        자리(인덱스)가 아니라 시점(2026-08 같은 이름)으로 맞춘다. 앞서는
+        길이만 같으면 통째로 물려줬는데, 축이 2026-08 에서 2026-09 로 밀린
+        날 8월 값이 9월 자리에 앉았다. 길이는 똑같이 60 이라 걸러지지 않았다.
+
+        그렇다고 축이 밀렸을 때 통째로 비우면, OECD 가 429 를 한 번 낼 때마다
+        차트가 사라진다. 이전 판에 기간 축도 함께 저장돼 있으니 시점표로
+        만들어 옮겨 실으면 둘 다 피할 수 있다. 새로 생긴 달은 빈칸이 되는데,
+        그건 '아직 못 받았다'는 사실 그대로다.
         """
+        axis = meta[axis_key]
+        old = prev.get(blk, {}).get(name)
+        old_axis = prev.get("meta", {}).get(axis_key) or []
+        if not old or len(old) != len(old_axis):
+            return [None] * len(axis)
+        at = dict(zip(old_axis, old))
+        return [at.get(p) for p in axis]
+
+    def keep_old(name: str, axis_key: str) -> None:
+        """받지 못한 계열은 이전 판 값을 시점에 맞춰 물려 쓴다."""
         for blk in sources.OECD_AREAS:
-            old = prev.get(blk, {}).get(name)
-            data[blk][name] = old if (old and len(old) == len(axis)) \
-                else [None] * len(axis)
+            data[blk][name] = carried(blk, name, axis_key)
+        got = sum(1 for blk in sources.OECD_AREAS
+                  for v in data[blk][name] if v is not None)
+        if got:
+            log(f"    └ {name} — 이전 판에서 {got}개를 시점에 맞춰 물려 썼다.")
 
     key = "+".join(sources.OECD_AREAS.values()) + ".M......."
     flows = {"KEI": oecd.KEI, "FINMARK": oecd.FINMARK}
@@ -421,7 +452,7 @@ def build(prev: dict) -> dict:
             got = oecd.series(flows[flow], key, months[0], **match)
         except oecd.OecdError as exc:
             log(f"  [실패] 해외 {name} — {exc} (이전 값을 물려 쓴다)")
-            keep_old(name, months)
+            keep_old(name, "months")
             continue
         have = 0
         for blk, area in sources.OECD_AREAS.items():
@@ -457,15 +488,17 @@ def build(prev: dict) -> dict:
     try:
         got = bis.policy_rates(list(bis.AREAS.values()), months[0])
         for blk, area in bis.AREAS.items():
-            rows = got.get(area, {})
-            data[blk]["cbr"] = [None if rows.get(m) is None
-                                else half_up(rows[m], 2) for m in months]
+            rows = bis.fill_tail(got.get(area, {}), months, area, log)
+            data[blk]["cbr"] = [
+                None if rows.get(m) is None
+                else half_up(bis.to_upper(area, rows[m], log), 2)
+                for m in months]
         have = sum(1 for b in bis.AREAS for v in data[b]["cbr"] if v is not None)
         log(f"  해외 cbr    BIS WS_CBPOL  정책금리 값 {have}/"
             f"{len(bis.AREAS)*len(months)}")
     except bis.BisError as exc:
         log(f"  [실패] 해외 정책금리 — {exc} (이전 값을 물려 쓴다)")
-        keep_old("cbr", months)
+        keep_old("cbr", "months")
 
     # 대미달러 환율
     flow, match, dig = sources.OECD_FX
@@ -480,16 +513,17 @@ def build(prev: dict) -> dict:
             + (f"  없음: {miss} (미국은 자기 통화)" if miss else ""))
     except oecd.OecdError as exc:
         log(f"  [실패] 해외 환율 — {exc} (이전 값을 물려 쓴다)")
-        keep_old("fxU", months)
+        keep_old("fxU", "months")
 
     # 경상수지 (분기·연간)
-    for freq, axis, name in (("Q", qs, "caQ"), ("A", years, "caA")):
+    for freq, axis_key, name in (("Q", "qs", "caQ"), ("A", "years", "caA")):
+        axis = meta[axis_key]
         try:
             got = oecd.series(oecd.BOP,
                               sources.OECD_CA_KEY.format(freq=freq), axis[0])
         except oecd.OecdError as exc:
             log(f"  [실패] 해외 {name} — {exc} (이전 값을 물려 쓴다)")
-            keep_old(name, axis)
+            keep_old(name, axis_key)
             continue
         for blk, area in sources.OECD_AREAS.items():
             rows = got.get(area, {})
@@ -520,7 +554,37 @@ def build(prev: dict) -> dict:
             f"{len(sources.OECD_AREAS)*len(years)}")
     except oecd.OecdError as exc:
         log(f"  [실패] 해외 주택가격 — {exc} (이전 값을 물려 쓴다)")
-        keep_old("hpi", years)
+        keep_old("hpi", "years")
+
+    # 근원물가. 흐름이 둘로 갈려 있어 받은 것을 합친다.
+    for name, specs in sources.OECD_CORE.items():
+        axis_key = "months" if name.endswith("M") else "years"
+        axis = meta[axis_key]
+        merged = {}
+        for fname, fkey in specs:
+            try:
+                merged.update(oecd.series(getattr(oecd, fname), fkey, axis[0]))
+            except oecd.OecdError as exc:
+                log(f"  [경고] 근원물가 {name} {fkey[:12]} — {exc}")
+        if not merged:
+            log(f"  [실패] 해외 {name} — 받은 것이 없다 (이전 값을 물려 쓴다)")
+            keep_old(name, axis_key)
+            continue
+        for blk, area in sources.OECD_AREAS.items():
+            rows = merged.get(area)
+            if not rows:
+                # 이 나라만 못 받았다. 빈칸으로 덮지 않고 이전 값을 시점에
+                # 맞춰 옮겨 싣는다 — 까닭은 carried 에 적어 두었다.
+                data[blk][name] = carried(blk, name, axis_key)
+                continue
+            data[blk][name] = [None if rows.get(p) is None
+                               else half_up(rows[p], 1) for p in axis]
+        miss = [b for b, a in sources.OECD_AREAS.items() if not merged.get(a)]
+        have = sum(1 for b in sources.OECD_AREAS for v in data[b][name]
+                   if v is not None)
+        log(f"  해외 {name:6} OECD 물가     근원 값 {have}/"
+            f"{len(sources.OECD_AREAS)*len(axis)}"
+            + (f"  없음: {miss}" if miss else ""))
 
     # 연간 실질 GDP 성장률
     try:
@@ -536,7 +600,7 @@ def build(prev: dict) -> dict:
             f"{len(sources.OECD_AREAS)*len(years)}")
     except oecd.OecdError as exc:
         log(f"  [실패] 해외 연간 성장률 — {exc} (이전 값을 물려 쓴다)")
-        keep_old("ga", years)
+        keep_old("ga", "years")
 
     # 연간 실업률
     try:
@@ -551,7 +615,7 @@ def build(prev: dict) -> dict:
             + (f"  없음: {miss}" if miss else ""))
     except oecd.OecdError as exc:
         log(f"  [실패] 해외 연간 실업률 — {exc} (이전 값을 물려 쓴다)")
-        keep_old("unA", years)
+        keep_old("unA", "years")
 
     # 연간 소비자물가
     cpi_a = {}
@@ -570,7 +634,7 @@ def build(prev: dict) -> dict:
         log(f"  해외 cpiA   OECD 물가     값 {have}/"
             f"{len(sources.OECD_AREAS)*len(years)}")
     else:
-        keep_old("cpiA", years)
+        keep_old("cpiA", "years")
 
     # 명목 GDP 와 총인구는 세계은행에서 받는다.
     #
@@ -585,7 +649,7 @@ def build(prev: dict) -> dict:
                                    years[0], years[-1])
         except worldbank.WorldBankError as exc:
             log(f"  [실패] 세계은행 {name} — {exc} (이전 값을 물려 쓴다)")
-            keep_old(name, years)
+            keep_old(name, "years")
             continue
         for blk, area in worldbank.AREAS.items():
             rows = got.get(area, {})
@@ -604,7 +668,7 @@ def build(prev: dict) -> dict:
             got = imf.series(ind, list(imf.AREAS.values()))
         except imf.ImfError as exc:
             log(f"  [실패] IMF {name} — {exc} (이전 값을 물려 쓴다)")
-            keep_old(name, years)
+            keep_old(name, "years")
             continue
         for blk, area in imf.AREAS.items():
             rows = got.get(area, {})
@@ -670,7 +734,7 @@ def build(prev: dict) -> dict:
             rows = ecb.monthly_fx(cur, months[0])
         except ecb.EcbError as exc:
             log(f"  [경고] 대유로 환율 {blk} ({cur}) — {exc}")
-            keep_old("fxE", months)
+            keep_old("fxE", "months")
             continue
         data[blk]["fxE"] = [None if rows.get(m) is None
                             else half_up(rows[m], 2) for m in months]
@@ -694,7 +758,7 @@ def build(prev: dict) -> dict:
             got = oecd.series(oecd.QNA_G20, "all", qs[0], **match)
         except oecd.OecdError as exc:
             log(f"  [실패] 해외 {name} — {exc} (이전 값을 물려 쓴다)")
-            keep_old(name, qs)
+            keep_old(name, "qs")
             continue
         have = 0
         for blk, area in sources.OECD_AREAS.items():

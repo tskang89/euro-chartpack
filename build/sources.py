@@ -250,6 +250,20 @@ OECD_FALLBACK = {
     },
 }
 
+# 근원물가(식품·에너지 제외). 헤드라인과 마찬가지로 일본만 COICOP 2018 판이다.
+#
+# 유로 탭의 근원물가는 "에너지·식품·주류·담배 제외"(TOT_X_NRG_FOOD)라 정의가
+# 조금 다르다. 술·담배가 들어 있고 빠져 있고의 차이다. 각주에 밝힌다.
+#
+# 중국은 없다. 전용 근원물가 데이터플로에도, 이 경로에도 CHN 이 안 나온다.
+# 중국은 OECD 에 비교 가능한 근원 계열을 내지 않는다.
+OECD_CORE = {
+    "coreM": [("PRICES_99", "USA+KOR+CHN.M.N.CPI.PA._TXCP01_NRG.N.GY"),
+              ("PRICES_18", "JPN.M.N.CPI.PA._TXCP01_NRG.N.GY")],
+    "coreA": [("PRICES_99", "USA+KOR+CHN.A.N.CPI.PA._TXCP01_NRG.N.GY"),
+              ("PRICES_18", "JPN.A.N.CPI.PA._TXCP01_NRG.N.GY")],
+}
+
 # 대유로 환율. ECB 기준환율에서 받는다(1유로당 자국통화).
 # 미국은 달러지수를 쓰므로 여기 넣지 않는다 — 지수와 환율을 한 축에 겹치면
 # 눈금이 뒤섞인다.
