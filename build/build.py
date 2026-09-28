@@ -29,6 +29,7 @@ import bis                                                       # noqa: E402
 import worldbank                                                 # noqa: E402
 import comext                                                    # noqa: E402
 import ecb                                                       # noqa: E402
+import imf                                                       # noqa: E402
 import eurostat                                                  # noqa: E402
 import oecd                                                      # noqa: E402
 import sources                                                   # noqa: E402
@@ -595,6 +596,23 @@ def build(prev: dict) -> dict:
                    if v is not None)
         log(f"  해외 {name:6} 세계은행       {label} 값 {have}/"
             f"{len(worldbank.AREAS)*len(years)}")
+
+    # 재정 (IMF WEO, 일반정부 기준)
+    for ind, name, label in ((imf.DEBT, "debt", "정부부채/GDP"),
+                             (imf.BALANCE, "bal", "재정수지/GDP")):
+        try:
+            got = imf.series(ind, list(imf.AREAS.values()))
+        except imf.ImfError as exc:
+            log(f"  [실패] IMF {name} — {exc} (이전 값을 물려 쓴다)")
+            keep_old(name, years)
+            continue
+        for blk, area in imf.AREAS.items():
+            rows = got.get(area, {})
+            data[blk][name] = [None if rows.get(y) is None
+                               else half_up(rows[y], 1) for y in years]
+        have = sum(1 for b in imf.AREAS for v in data[b][name] if v is not None)
+        log(f"  해외 {name:6} IMF WEO       {label} 값 {have}/"
+            f"{len(imf.AREAS)*len(years)}")
 
     # 경상수지 / GDP. 분모는 언제나 그 해 연간 명목 GDP 다. 그래서 이 계산은
     # 명목 GDP 를 받은 뒤라야 한다 — 앞에 두었다가 전부 빈칸이 된 적이 있다.

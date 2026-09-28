@@ -359,7 +359,16 @@ function globalSections(c){
         {n:'_0',d:LQ.map(()=>0),col:'--ref',ref:true}],
        note:'분기 금액을 그 해 연간 명목 GDP 의 1/4 로 나눈 연율 기준. 연간 비율과 같은 눈금에서 읽힌다.'}
     ]},
-    {n:'5', t:'소비자물가', sub:'월간 · % 전년동월비', charts:[
+    {n:'5', t:'재정', sub:'연간 · 일반정부 · GDP 대비', charts:[
+      {t:'정부부채 / GDP', u:'% GDP', type:'bar', L:LY, dec:1, S:[
+        {n:'정부부채',d:d.debt,col:'--s1'}],
+       note:'일반정부 총부채. 자료: IMF World Economic Outlook. 유로 탭은 Eurostat EDP 기준이라 출처가 다르다.'},
+      {t:'재정수지 / GDP', u:'% GDP', type:'bar', L:LY, dec:1, S:[
+        {n:'재정수지',d:d.bal,col:'--s2'},
+        {n:'_0',d:LY.map(()=>0),col:'--ref',ref:true,kind:'line'}],
+       note:'일반정부 순대출(+)/순차입(−). 자료: IMF World Economic Outlook.'}
+    ]},
+    {n:'6', t:'소비자물가', sub:'월간 · % 전년동월비', charts:[
       {t:'연간 소비자물가 상승률', u:'% 전년비', type:'bar', L:LY, dec:1, S:[
         {n:'소비자물가',d:d.cpiA,col:'--s1'}],
        note:'연평균 기준. 자료: OECD.'},
@@ -368,7 +377,7 @@ function globalSections(c){
         {n:'_2%',d:LM.map(()=>2),col:'--ref',ref:true}],
        note:'각국 소비자물가지수(CPI) 기준. 유로지역 탭은 HICP 라 산출 기준이 달라 수준을 그대로 견주기 어렵다. 자료: OECD.'+(noCPI?' 일본은 OECD 에 비교 가능한 계열이 없어 비워 두었다.':'')}
     ]},
-    {n:'6', t:'실업률', sub:'연간 · 월간', charts:[
+    {n:'7', t:'실업률', sub:'연간 · 월간', charts:[
       {t:'연간 실업률', u:'%', type:'line', L:LY, dec:1, points:true, S:[
         {n:'실업률',d:d.unA,col:'--s1'}],
        note:'연평균. 자료: OECD.'+(noUN?' 중국은 비교 가능한 계열이 없어 비워 두었다.':'')},
@@ -376,7 +385,7 @@ function globalSections(c){
         {n:'실업률',d:d.unM,col:'--s1'}],
        note:'OECD 표준 정의(15~64세 노동력 대비).'+(noUN?' 중국은 OECD 에 비교 가능한 계열이 없어 비워 두었다. 중국은 도시조사실업률을 따로 발표하나 기준이 다르다.':'')}
     ]},
-    {n:'7', t:'주가', sub:'월간 · 월말 종가', charts:[
+    {n:'8', t:'주가', sub:'월간 · 월말 종가', charts:[
       {t:C[c].idx+' 지수', u:'포인트', type:'line', L:LMS, dec:0, zeroBase:false, S:[
         {n:C[c].idx,d:d.stk,col:'--s1'}],
        note:'월말 종가(Yahoo Finance 기준).'+(M.stkNote?' '+M.stkNote+'.':'')},
@@ -384,13 +393,13 @@ function globalSections(c){
         {n:'월간 상승률',d:d.stkR,col:'--s2'}],
        note:'월말 종가 기준 전월 대비 등락률.'+(M.stkNote?' '+M.stkNote+'.':'')}
     ]},
-    {n:'8', t:'금리', sub:'월간 · 장기 · 단기', charts:[
+    {n:'9', t:'금리', sub:'월간 · 정책금리 · 10년물 국채', charts:[
       {t:'정책금리와 10년물 국채금리', u:'%', type:'line', L:LM, dec:2, S:[
         {n:'정책금리',d:d.cbr,col:'--s4'},
         {n:'10년물 국채',d:d.y10,col:'--s1'}],
        note:'정책금리는 중앙은행이 정한 금리(자료: BIS), 10년물은 국채수익률 월평균(자료: OECD).'+(c==='CN'?' 중국 정책금리는 대출우대금리(LPR) 기준.':'')}
     ]},
-    {n:'9', t:'환율', sub:'월간 · 대미달러 · 대유로', charts:[
+    {n:'10', t:'환율', sub:'월간 · 대미달러 · 대유로', charts:[
       {t: c==='US' ? '달러지수 (ICE DXY)' : '대미달러 환율',
        u: c==='US' ? '지수' : '1달러당', type:'line', L:LM, dec:2, zeroBase:false, S:[
         {n: c==='US' ? '달러지수' : '대미달러', d:d.fxU, col:'--s1'}],
@@ -401,17 +410,17 @@ function globalSections(c){
         {n:'대유로',d:d.fxE,col:'--s2'}],
        note:'1유로당 자국 통화. 상승은 자국 통화 약세. ECB 기준환율 월평균.'}])
     ]},
-    {n:'10', t:'생산', sub:'월간 · 지수 · 계절조정', charts:[
+    {n:'11', t:'생산', sub:'월간 · 지수 · 계절조정', charts:[
       {t:'월간 산업생산', u:'지수', type:'line', L:LM, dec:1, S:[
         {n:'산업생산',d:d.ipM,col:'--s1'}],
        note:'OECD 산업생산 물량지수. 기준연도가 유로지역 차트(2021=100)와 다를 수 있어 수준을 그대로 견주지 않는다.'}
     ]},
-    {n:'11', t:'주택가격', sub:'연간', charts:[
+    {n:'12', t:'주택가격', sub:'연간', charts:[
       {t:'주택가격 상승률', u:'% 전년비', type:'bar', L:LY, dec:1, S:[
         {n:'주택가격',d:d.hpi,col:'--s1'}],
        note:'명목 주택가격지수의 전년비 상승률. 자료: OECD 주택가격 지표.'}
     ]},
-    {n:'12', t:'경기선행지수 · 심리', sub:'월간 · CLI 100 = 장기추세', charts:[
+    {n:'13', t:'경기선행지수 · 심리', sub:'월간 · CLI 100 = 장기추세', charts:[
       {t:'경기선행지수(CLI)', u:'지수', type:'line', L:LM, dec:1, S:[
         {n:'CLI',d:d.cli,col:'--s1'},
         {n:'_장기추세 100',d:LM.map(()=>100),col:'--ref',ref:true}],
