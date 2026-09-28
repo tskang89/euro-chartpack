@@ -28,6 +28,7 @@ sys.path.insert(0, str(BASE / "build"))
 import comext                                                    # noqa: E402
 import ecb                                                       # noqa: E402
 import eurostat                                                  # noqa: E402
+import oecd                                                      # noqa: E402
 import sources                                                   # noqa: E402
 import stocks                                                    # noqa: E402
 
@@ -395,6 +396,51 @@ def build(prev: dict) -> dict:
     if closes:
         log(f"  월  stk/stkR  Yahoo Finance    {len(closes)}/{len(stocks.SYMBOLS)}개 지수")
 
+    # --- 유로지역 밖 네 나라 (미국·중국·일본·한국) ---
+    # 화면은 아직 이 블록을 보여 주지 않는다. 자료를 먼저 채우고 탭은 나중에
+    # 켠다 — 순서를 바꾸면 빈 탭 넷이 먼저 생긴다.
+    key = "+".join(sources.OECD_AREAS.values()) + ".M......."
+    flows = {"KEI": oecd.KEI, "FINMARK": oecd.FINMARK}
+    for blk in sources.OECD_AREAS:
+        data.setdefault(blk, {})
+    for name, (flow, match, digits) in sources.OECD_MONTHLY.items():
+        try:
+            got = oecd.series(flows[flow], key, months[0], **match)
+        except oecd.OecdError as exc:
+            log(f"  [실패] 해외 {name} — {exc}")
+            continue
+        have = 0
+        for blk, area in sources.OECD_AREAS.items():
+            rows = got.get(area, {})
+            data[blk][name] = [None if rows.get(m) is None
+                               else half_up(rows[m], digits) for m in months]
+            have += sum(1 for v in data[blk][name] if v is not None)
+        empty = [b for b, a in sources.OECD_AREAS.items() if not got.get(a)]
+        log(f"  해외 {name:6} OECD {flow:8} 값 {have:4}/"
+            f"{len(sources.OECD_AREAS)*len(months)}"
+            + (f"  없음: {empty}" if empty else ""))
+
+    # 주가는 유로지역과 같은 자리를 쓰므로 같은 출처(Yahoo 월말 종가)로 받는다.
+    msx2 = meta.get("monthsS") or months
+    for blk, symbol in sources.OECD_STOCKS.items():
+        try:
+            rows = stocks.monthly_close(symbol, msx2[0], msx2[-1])
+        except stocks.StockError as exc:
+            log(f"  [경고] 해외 주가 {blk} ({symbol}) — {exc}")
+            data[blk]["stk"] = [None] * len(msx2)
+            data[blk]["stkR"] = [None] * len(msx2)
+            continue
+        data[blk]["stk"] = [None if m not in rows else half_up(rows[m], 1)
+                            for m in msx2]
+        y, m0 = int(msx2[0][:4]), int(msx2[0][5:7])
+        before = f"{y - 1}-12" if m0 == 1 else f"{y}-{m0 - 1:02d}"
+        chain = [rows.get(before)] + [rows.get(x) for x in msx2]
+        data[blk]["stkR"] = [
+            None if (chain[i] is None or chain[i - 1] is None)
+            else half_up((chain[i] / chain[i - 1] - 1) * 100, 1)
+            for i in range(1, len(chain))]
+    log(f"  해외 stk/stkR  Yahoo Finance    {len(sources.OECD_STOCKS)}개 지수")
+
     # --- ECB: 환율과 정책금리 ---
     try:
         for key, (cur, dig) in sources.FX_MONTHLY.items():
@@ -431,7 +477,7 @@ def build(prev: dict) -> dict:
 
     # 화면 코드가 기대하는 계열이 빠지면 차트가 빈 칸으로 뜬다. 미리 잡는다.
     expected = set(prev["EZ"])
-    for blk in sources.GEO:
+    for blk in sources.GEO:          # 유로 블록만. 해외 블록은 계열 구성이 다르다.
         missing = expected - set(data[blk])
         if missing:
             log(f"  [경고] {blk} 에 없는 계열: {sorted(missing)} — 이전 판에서 채운다")

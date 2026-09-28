@@ -1,0 +1,93 @@
+# -*- coding: utf-8 -*-
+"""OECD SDMX 에서 유로지역 밖 나라의 시계열을 가져온다.
+
+Eurostat 은 EU 밖을 내지 않는다. 미국·중국·일본·한국은 여기서 받는다.
+
+SDMX-JSON 은 Eurostat 의 JSON-stat 과 구조가 다르다. 값이 "3:1:0:2:..." 처럼
+차원 자리를 콜론으로 이은 키에 달려 있어서, 자리마다 코드표를 되짚어야 한다.
+
+주의할 것 둘.
+
+  500 이 자주 난다. 자료가 없어서가 아니라 뽑는 양이 많을 때 그렇다. 기간을
+  좁히거나 잠시 뒤 다시 하면 된다. 그래서 재시도를 넣었다.
+
+  같은 지표라도 나라마다 있는 조합이 다르다. 일본은 KEI 에 소비자물가가 없고
+  중국은 실업률이 없다. 없는 것을 0 으로 채우지 않고 빈칸으로 둔다.
+"""
+
+from __future__ import annotations
+
+import time
+
+import requests
+
+BASE = "https://sdmx.oecd.org/public/rest/data/{flow}/{key}"
+TIMEOUT = 120
+RETRIES = 4
+PACE = 0.6
+
+KEI = "OECD.SDD.STES,DSD_KEI@DF_KEI,4.0"
+FINMARK = "OECD.SDD.STES,DSD_STES@DF_FINMARK,4.0"
+
+
+class OecdError(RuntimeError):
+    pass
+
+
+def fetch(flow: str, key: str, start: str, end: str | None = None) -> dict:
+    params = {"startPeriod": start, "dimensionAtObservation": "AllDimensions"}
+    if end:
+        params["endPeriod"] = end
+    url = BASE.format(flow=flow, key=key)
+    last = None
+    for attempt in range(RETRIES):
+        try:
+            resp = requests.get(
+                url, params=params, timeout=TIMEOUT,
+                headers={"Accept": "application/vnd.sdmx.data+json"})
+        except requests.RequestException as exc:
+            last = exc
+            time.sleep(3 * (attempt + 1))
+            continue
+        if resp.status_code == 200:
+            time.sleep(PACE)
+            return resp.json()
+        if resp.status_code == 404:
+            raise OecdError(f"{flow} {key}: 그런 계열이 없다 (404)")
+        last = f"HTTP {resp.status_code}"
+        time.sleep(3 * (attempt + 1))
+    raise OecdError(f"{flow} {key}: {RETRIES}번 시도했으나 실패 ({last})")
+
+
+def decode(doc: dict) -> dict[tuple, float]:
+    """{(차원코드, ...): 값}. 키 순서는 응답의 차원 순서와 같다."""
+    struct = doc["data"]["structures"][0]["dimensions"]["observation"]
+    codes = [[v["id"] for v in dim["values"]] for dim in struct]
+    out: dict[tuple, float] = {}
+    for flat, value in doc["data"]["dataSets"][0]["observations"].items():
+        v = value[0]
+        if v is None:
+            continue
+        out[tuple(codes[i][int(pos)] for i, pos in enumerate(flat.split(":")))] = v
+    return out
+
+
+def series(flow: str, key: str, start: str, end: str | None = None,
+           **match) -> dict[str, dict[str, float]]:
+    """{REF_AREA: {기간: 값}}.
+
+    match 에 준 차원은 그 값과 같은 관측만 남긴다. 예를 들어
+    series(KEI, "USA+KOR.M...", "2021-09", MEASURE="CP", TRANSFORMATION="GY")
+    """
+    doc = fetch(flow, key, start, end)
+    struct = doc["data"]["structures"][0]["dimensions"]["observation"]
+    order = [d["id"] for d in struct]
+    ai, ti = order.index("REF_AREA"), order.index("TIME_PERIOD")
+
+    out: dict[str, dict[str, float]] = {}
+    for tup, value in decode(doc).items():
+        row = dict(zip(order, tup))
+        if any(row.get(k) != v for k, v in match.items()):
+            continue
+        out.setdefault(row[order[ai]], {})[row[order[ti]]] = value
+    return out

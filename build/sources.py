@@ -187,3 +187,44 @@ TRADE_COUNTRY = ("ei_eteu27_2020_m", dict(unit="MIO-EUR-NSA", indic="ET-T"),
 # 대한국 교역. 유로지역은 위 데이터셋에 상대국 KR 이 있지만, 개별국은 상대가
 # 집계뿐이라 Comext 를 따로 불러야 한다(comext.py 참고).
 KR = "KR"
+
+
+# ============================================== 유로지역 밖 (미국·중국·일본·한국)
+# Eurostat 은 EU 밖을 내지 않는다. 이 넷은 OECD SDMX 에서 받는다.
+#
+# 이름이 같은 계열이라도 정의가 유로지역과 똑같지는 않다. 유로지역 물가는
+# HICP 이고 이쪽은 각국 CPI 다. 생산지수도 기준연도가 다를 수 있다. 차트가
+# 나라별로 따로 그려지므로 한 그림에 섞이지는 않지만, 각주에 무엇인지 밝혀야
+# 한다.
+#
+# 빈 곳이 셋 있다. 없는 것은 빈칸으로 둔다 — 0 으로 채우면 급락으로 읽힌다.
+#
+#   일본 소비자물가   KEI 에 없다. 전용 물가 데이터플로(DSD_PRICES@DF_PRICES_ALL)
+#                     에도 JPN 은 안 나온다. 미국·한국·중국은 두 경로 값이 같으니
+#                     코드를 잘못 짚은 것은 아니다. 다른 출처를 붙여야 한다.
+#   중국 실업률       OECD 에 비교 가능한 계열이 없다. 중국은 도시조사실업률을
+#                     내지만 기준이 다르다.
+#   일본 기업심리     BCICP 에 JPN 이 없다. 일본은 단칸(日銀短観)이 따로 있다.
+OECD_AREAS = {"US": "USA", "CN": "CHN", "JP": "JPN", "KR": "KOR"}
+
+# (흐름, 차원 조건, 자릿수). 흐름은 oecd.py 의 KEI / FINMARK.
+OECD_MONTHLY = {
+    # 유로지역 차트와 같은 자리에 들어가는 것
+    "cpiM":  ("KEI", dict(MEASURE="CP",     UNIT_MEASURE="GR",
+                          TRANSFORMATION="GY"), 1),
+    "y10":   ("KEI", dict(MEASURE="IRLT",   UNIT_MEASURE="PA"), 2),
+    "unM":   ("KEI", dict(MEASURE="UNEMP",  UNIT_MEASURE="PT_LF"), 1),
+    "ipM":   ("KEI", dict(MEASURE="PRVM",   UNIT_MEASURE="IX"), 1),
+
+    # 새로 만드는 자리. 유로지역에는 대응 계열이 없거나 출처가 다르다.
+    "i3m":   ("KEI", dict(MEASURE="IR3TIB", UNIT_MEASURE="PA"), 2),
+    "bci":   ("KEI", dict(MEASURE="BCICP",  UNIT_MEASURE="PB"), 1),
+    "cci":   ("KEI", dict(MEASURE="CCICP",  UNIT_MEASURE="PB"), 1),
+    # 교역액은 월 10억 달러 단위로 온다(2026-08 중국 396, 미국 200, 한국 100).
+    "exUSD": ("KEI", dict(MEASURE="EX",     UNIT_MEASURE="USD"), 1),
+    "imUSD": ("KEI", dict(MEASURE="IM",     UNIT_MEASURE="USD"), 1),
+}
+
+# 주가는 OECD 에도 있지만 지수(2021=100)다. 유로지역 차트는 실제 지수 수준을
+# 보여 주므로 여기서도 Yahoo 월말 종가를 쓴다. 그래야 같은 차트가 된다.
+OECD_STOCKS = {"US": "^GSPC", "CN": "000001.SS", "JP": "^N225", "KR": "^KS11"}
