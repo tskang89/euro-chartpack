@@ -26,6 +26,7 @@ BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE / "build"))
 
 import bis                                                       # noqa: E402
+import worldbank                                                 # noqa: E402
 import comext                                                    # noqa: E402
 import ecb                                                       # noqa: E402
 import eurostat                                                  # noqa: E402
@@ -533,20 +534,30 @@ def build(prev: dict) -> dict:
     else:
         keep_old("cpiA", years)
 
-    # 총인구. 화면은 백만 명 단위라 사람 수를 나눈다.
-    try:
-        got = oecd.series(oecd.POP, sources.OECD_POP_KEY, years[0],
-                          **sources.OECD_POP_MATCH)
-        for blk, area in sources.OECD_AREAS.items():
+    # 명목 GDP 와 총인구는 세계은행에서 받는다.
+    #
+    # OECD 연간 국민계정은 달러 계열이 PPP 기준이고(시장환율 명목 GDP 가
+    # 없다), 중국이 회원국 흐름에 빠져 인구도 2023년까지만 나온다. 세계은행은
+    # 둘 다 해결한다. 자세한 것은 worldbank.py.
+    for ind, name, scale, digits, label in (
+            (worldbank.GDP_USD, "gdpUSD", 1e12, 2, "명목 GDP(조 달러)"),
+            (worldbank.POPULATION, "pop", 1e6, 2, "총인구(백만)")):
+        try:
+            got = worldbank.series(ind, list(worldbank.AREAS.values()),
+                                   years[0], years[-1])
+        except worldbank.WorldBankError as exc:
+            log(f"  [실패] 세계은행 {name} — {exc} (이전 값을 물려 쓴다)")
+            keep_old(name, years)
+            continue
+        for blk, area in worldbank.AREAS.items():
             rows = got.get(area, {})
-            data[blk]["pop"] = [None if rows.get(y) is None
-                                else half_up(rows[y] / 1000, 2) for y in years]
-        miss = [b for b, a in sources.OECD_AREAS.items() if not got.get(a)]
-        log("  해외 pop    OECD 국민계정  총인구"
-            + (f"  없음: {miss}" if miss else ""))
-    except oecd.OecdError as exc:
-        log(f"  [실패] 해외 인구 — {exc} (이전 값을 물려 쓴다)")
-        keep_old("pop", years)
+            data[blk][name] = [None if rows.get(y) is None
+                               else half_up(rows[y] / scale, digits)
+                               for y in years]
+        have = sum(1 for b in worldbank.AREAS for v in data[b][name]
+                   if v is not None)
+        log(f"  해외 {name:6} 세계은행       {label} 값 {have}/"
+            f"{len(worldbank.AREAS)*len(years)}")
 
     # 연간·분기 교역은 월별 달러 금액을 더해서 만든다. 유로지역과 달리
     # 역내·역외 구분이 없으므로 전체(ex·im)만 둔다.
