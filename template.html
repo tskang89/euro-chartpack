@@ -311,29 +311,37 @@ function globalSections(c){
   const gap = s => s===null ? ' 해당 계열이 OECD 에 없어 비워 둔다.' : '';
   const noCPI = c==='JP', noUN = c==='CN', noBCI = c==='JP';
   return [
-    {n:'1', t:'소비자물가', sub:'월간 · % 전년동월비', charts:[
-      {t:'소비자물가 상승률', u:'% 전년동월비', type:'line', L:LM, dec:1, S:[
-        {n:'소비자물가',d:d.cpiM,col:'--s1'},
-        {n:'_2%',d:LM.map(()=>2),col:'--ref',ref:true}],
-       note:'각국 소비자물가지수(CPI) 기준. 유로지역 탭은 HICP 라 산출 기준이 달라 수준을 그대로 견주기 어렵다. 자료: OECD.'+(noCPI?' 일본은 OECD 에 비교 가능한 계열이 없어 비워 두었다.':'')}
-    ]},
-    {n:'2', t:'실질 GDP 성장률', sub:'분기 · 계절조정', charts:[
+    {n:'1', t:'실질 GDP 성장률', sub:'분기 · 계절조정', charts:[
       {t:'실질 GDP 성장률', u:'%', type:'line', L:LQ, dec:1, S:[
         {n:'전기비',d:d.gqq,col:'--s1'},
         {n:'전년동기비',d:d.gqy,col:'--s2'},
         {n:'_0',d:LQ.map(()=>0),col:'--ref',ref:true}],
        note:'계절조정 실질 GDP. 자료: OECD 분기 국민계정(G20).'}
     ]},
-    {n:'3', t:'실업률', sub:'월간 · 계절조정', charts:[
+    {n:'2', t:'대외교역', sub:'월간 · 상품 · 달러', charts:[
+      {t:'상품 수출입 (연간)', u:'십억 달러', type:'bar', L:LY, dec:1, balance:true, S:[
+        {n:'수출',d:(d.trA||{}).ex,col:'--s1'},
+        {n:'수입',d:(d.trA||{}).im,col:'--s2'}],
+       note:gen+'의 대세계 상품 교역액. 월별 달러 금액을 열두 달 모두 있는 해만 더했다.'},
+      {t:'상품 수출입 (분기)', u:'십억 달러', type:'line', L:LQ, dec:1, balance:true, S:[
+        {n:'수출',d:(d.trQ||{}).ex,col:'--s1'},
+        {n:'수입',d:(d.trQ||{}).im,col:'--s2'}],
+       note:'월별 금액을 석 달 모두 있는 분기만 더했다.'},
+      {t:'상품 수출입 (월간)', u:'십억 달러', type:'line', L:LM, dec:1, balance:true, wide:true, S:[
+        {n:'수출',d:d.exUSD,col:'--s1'},
+        {n:'수입',d:d.imUSD,col:'--s2'}],
+       note:'계절조정 기준. 자료: OECD.'}
+    ]},
+    {n:'3', t:'소비자물가', sub:'월간 · % 전년동월비', charts:[
+      {t:'소비자물가 상승률', u:'% 전년동월비', type:'line', L:LM, dec:1, S:[
+        {n:'소비자물가',d:d.cpiM,col:'--s1'},
+        {n:'_2%',d:LM.map(()=>2),col:'--ref',ref:true}],
+       note:'각국 소비자물가지수(CPI) 기준. 유로지역 탭은 HICP 라 산출 기준이 달라 수준을 그대로 견주기 어렵다. 자료: OECD.'+(noCPI?' 일본은 OECD 에 비교 가능한 계열이 없어 비워 두었다.':'')}
+    ]},
+    {n:'4', t:'실업률', sub:'월간 · 계절조정', charts:[
       {t:'실업률', u:'%', type:'line', L:LM, dec:1, S:[
         {n:'실업률',d:d.unM,col:'--s1'}],
        note:'OECD 표준 정의(15~64세 노동력 대비).'+(noUN?' 중국은 OECD 에 비교 가능한 계열이 없어 비워 두었다. 중국은 도시조사실업률을 따로 발표하나 기준이 다르다.':'')}
-    ]},
-    {n:'4', t:'금리', sub:'월간 · 장기 · 단기', charts:[
-      {t:'장단기 금리', u:'%', type:'line', L:LM, dec:2, S:[
-        {n:'10년물 국채',d:d.y10,col:'--s1'},
-        {n:'단기(3개월)',d:d.i3m,col:'--s2'}],
-       note:'장기는 10년물 국채수익률, 단기는 3개월 은행간금리. 자료: OECD.'}
     ]},
     {n:'5', t:'주가', sub:'월간 · 월말 종가', charts:[
       {t:C[c].idx, u:'지수', type:'line', L:LMS, dec:1, S:[
@@ -343,28 +351,35 @@ function globalSections(c){
         {n:'등락률',d:d.stkR,col:'--s1'}],
        note:'월말 종가 기준 전월 대비 등락률.'}
     ]},
-    {n:'6', t:'생산', sub:'월간 · 지수 · 계절조정', charts:[
+    {n:'6', t:'금리', sub:'월간 · 장기 · 단기', charts:[
+      {t:'정책금리와 장단기 금리', u:'%', type:'line', L:LM, dec:2, S:[
+        {n:'정책금리',d:d.cbr,col:'--s4'},
+        {n:'단기(3개월)',d:d.i3m,col:'--s2'},
+        {n:'10년물 국채',d:d.y10,col:'--s1'}],
+       note:'정책금리는 중앙은행이 정한 금리(자료: BIS). 단기는 3개월 은행간금리, 장기는 10년물 국채수익률(자료: OECD).'+(c==='CN'?' 중국 정책금리는 대출우대금리(LPR) 기준.':'')}
+    ]},
+    {n:'7', t:'환율', sub:'월간 · 대미달러', charts:[
+      {t: c==='US' ? '달러지수 (ICE DXY)' : '대미달러 환율',
+       u: c==='US' ? '지수' : '1달러당', type:'line', L:LM, dec:2, S:[
+        {n: c==='US' ? '달러지수' : '대미달러', d:d.fxU, col:'--s1'}],
+       note: c==='US'
+         ? 'ICE 달러지수(DXY) 월말 종가. 주요 6개 통화 대비 달러 가치로, 상승은 달러 강세. 다른 탭의 대미달러 환율과는 단위가 다르다. 자료: Yahoo Finance.'
+         : '1달러당 자국 통화. 상승은 자국 통화 약세. 월평균. 자료: OECD.'}
+    ]},
+    {n:'8', t:'생산', sub:'월간 · 지수 · 계절조정', charts:[
       {t:'산업생산지수', u:'지수', type:'line', L:LM, dec:1, S:[
         {n:'산업생산',d:d.ipM,col:'--s1'}],
        note:'OECD 산업생산 물량지수. 기준연도가 유로지역 차트(2021=100)와 다를 수 있어 수준을 그대로 견주지 않는다.'}
     ]},
-    {n:'7', t:'대외교역', sub:'월간 · 상품 · 달러', charts:[
-      {t:'상품 수출입', u:'십억 달러', type:'line', L:LM, dec:1, balance:true, S:[
-        {n:'수출',d:d.exUSD,col:'--s1'},
-        {n:'수입',d:d.imUSD,col:'--s2'}],
-       note:gen+'의 대세계 상품 교역액. 계절조정 기준, 월별 달러 표시. 자료: OECD.'}
-    ]},
-    {n:'8', t:'환율', sub:'월간 · 대미달러', charts:[
-      {t:'대미달러 환율', u:'1달러당', type:'line', L:LM, dec:2, S:[
-        {n:'대미달러',d:d.fxU,col:'--s1'}],
-       note:'1달러당 자국 통화. 상승은 자국 통화 약세. 자료: OECD.'+(c==='US'?' 미국은 자기 통화라 계열이 없다.':'')}
-    ]},
-    {n:'9', t:'기업·소비자 심리', sub:'월간 · 지수 · 100 = 장기평균', charts:[
-      {t:'심리지수', u:'지수', type:'line', L:LM, dec:1, S:[
+    {n:'9', t:'경기선행지수 · 심리', sub:'월간 · CLI 100 = 장기추세', charts:[
+      {t:'경기선행지수(CLI)', u:'지수', type:'line', L:LM, dec:1, S:[
+        {n:'CLI',d:d.cli,col:'--s1'},
+        {n:'_장기추세 100',d:LM.map(()=>100),col:'--ref',ref:true}],
+       note:'OECD 경기선행지수. 100 이 장기추세이고 그 위면 확장 국면을 가리킨다. 진폭을 맞춰 놓은 지표라 나라 사이 수준을 견줄 수 있다.'},
+      {t:'기업·소비자 심리', u:'각국 고유 눈금', type:'line', L:LM, dec:1, S:[
         {n:'기업',d:d.bci,col:'--s2'},
-        {n:'소비자',d:d.cci,col:'--s1'},
-        {n:'_장기평균 100',d:LM.map(()=>100),col:'--ref',ref:true}],
-       note:'OECD 합성 심리지수. 100 이 장기평균이고 그 위면 평균보다 낙관적이다. 유로지역 탭의 EC 서베이(응답 비율 차)와는 눈금이 다르다.'+(noBCI?' 일본 기업심리는 OECD 에 없어 비워 두었다(일본은 단칸을 따로 발표).':'')}
+        {n:'소비자',d:d.cci,col:'--s1'}],
+       note:'각국 서베이를 원래 눈금 그대로 옮긴 것이다. 미국 소비자는 50~85, 중국은 85~120, 한국은 -14~12 식으로 척도가 나라마다 다르므로 나라 사이 수준을 견주지 않는다. 한 나라 안에서 방향과 추세만 본다.'+(noBCI?' 일본 기업심리는 OECD 에 없어 비워 두었다(일본은 단칸을 따로 발표).':'')}
     ]}
   ];
 }
@@ -398,6 +413,7 @@ function kpis(c){
     h += item('실질 GDP 전기비', d.gqq, '', '%', 1, qL);
     h += item('소비자물가', d.cpiM, '', '%', 1, mL);
     h += item('실업률', d.unM, '', '%', 1, mL);
+    h += item('정책금리', d.cbr, '', '%', 2, mL);
     h += item('10년물 금리', d.y10, '', '%', 2, mL);
     h += item('단기금리', d.i3m, '', '%', 2, mL);
     h += item('수출', d.exUSD, '', '십억$', 1, mL);

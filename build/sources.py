@@ -219,7 +219,15 @@ OECD_MONTHLY = {
     # 새로 만드는 자리. 유로지역에는 대응 계열이 없거나 출처가 다르다.
     "i3m":   ("KEI", dict(MEASURE="IR3TIB", UNIT_MEASURE="PA"), 2),
     "bci":   ("KEI", dict(MEASURE="BCICP",  UNIT_MEASURE="PB"), 1),
+    # 기업·소비자 심리는 각국 서베이의 '원래 눈금'으로 온다(UNIT=PB).
+    # 미국 소비자는 50~85, 중국은 85~120, 한국은 -14~12 처럼 나라마다 척도가
+    # 다르다. KEI 에 100 기준 진폭조정판(IX)은 없다. 그래서 이 계열로는
+    # 나라 사이 수준을 견줄 수 없고, 각 나라의 방향과 추세만 읽어야 한다.
+    # 처음에 각주를 "100 = 장기평균"이라고 적었다가 바로잡았다.
     "cci":   ("KEI", dict(MEASURE="CCICP",  UNIT_MEASURE="PB"), 1),
+
+    # 경기선행지수(CLI). 이쪽은 100 이 장기추세라 나라 사이 비교가 된다.
+    "cli":   ("KEI", dict(MEASURE="LI",     UNIT_MEASURE="IX"), 1),
     # 교역액은 월 10억 달러 단위로 온다(2026-08 중국 396, 미국 200, 한국 100).
     "exUSD": ("KEI", dict(MEASURE="EX",     UNIT_MEASURE="USD"), 1),
     "imUSD": ("KEI", dict(MEASURE="IM",     UNIT_MEASURE="USD"), 1),
@@ -260,3 +268,8 @@ OECD_QUARTERLY = {
 # 주가는 OECD 에도 있지만 지수(2021=100)다. 유로지역 차트는 실제 지수 수준을
 # 보여 주므로 여기서도 Yahoo 월말 종가를 쓴다. 그래야 같은 차트가 된다.
 OECD_STOCKS = {"US": "^GSPC", "CN": "000001.SS", "JP": "^N225", "KR": "^KS11"}
+
+# 미국은 자기 통화라 대미달러 환율이 없다. 대신 달러지수(ICE DXY)를 넣는다.
+# Yahoo 에서 받아 키가 필요 없다 — FRED 의 광의 달러지수를 쓰면 키에 매이게 된다.
+# 단위가 다르다는 점은 화면 각주에서 밝힌다.
+DOLLAR_INDEX = {"US": "DX-Y.NYB"}

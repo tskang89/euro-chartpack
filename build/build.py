@@ -25,6 +25,7 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE / "build"))
 
+import bis                                                       # noqa: E402
 import comext                                                    # noqa: E402
 import ecb                                                       # noqa: E402
 import eurostat                                                  # noqa: E402
@@ -449,6 +450,21 @@ def build(prev: dict) -> dict:
             log(f"  예비 {blk}.{name:6} {fflow.split('@')[-1][:24]:24} "
                 f"값 {have}/{len(months)}")
 
+    # 정책금리 (BIS). OECD 단기금리는 콜·은행간금리라 정책금리가 아니고
+    # 중국이 빠진다. 자세한 것은 bis.py.
+    try:
+        got = bis.policy_rates(list(bis.AREAS.values()), months[0])
+        for blk, area in bis.AREAS.items():
+            rows = got.get(area, {})
+            data[blk]["cbr"] = [None if rows.get(m) is None
+                                else half_up(rows[m], 2) for m in months]
+        have = sum(1 for b in bis.AREAS for v in data[b]["cbr"] if v is not None)
+        log(f"  해외 cbr    BIS WS_CBPOL  정책금리 값 {have}/"
+            f"{len(bis.AREAS)*len(months)}")
+    except bis.BisError as exc:
+        log(f"  [실패] 해외 정책금리 — {exc} (이전 값을 물려 쓴다)")
+        keep_old("cbr", months)
+
     # 대미달러 환율
     flow, match, dig = sources.OECD_FX
     try:
@@ -463,6 +479,45 @@ def build(prev: dict) -> dict:
     except oecd.OecdError as exc:
         log(f"  [실패] 해외 환율 — {exc} (이전 값을 물려 쓴다)")
         keep_old("fxU", months)
+
+    # 연간·분기 교역은 월별 달러 금액을 더해서 만든다. 유로지역과 달리
+    # 역내·역외 구분이 없으므로 전체(ex·im)만 둔다.
+    for blk in sources.OECD_AREAS:
+        ex, im = data[blk].get("exUSD"), data[blk].get("imUSD")
+        if not ex or not im:
+            continue
+        ya, qa = {}, {}
+        for i, m in enumerate(months):
+            y, mm = m[:4], int(m[5:7])
+            q = f"{y}-Q{(mm - 1) // 3 + 1}"
+            ya.setdefault(y, []).append((ex[i], im[i]))
+            qa.setdefault(q, []).append((ex[i], im[i]))
+
+        def roll(bucket, need, axis):
+            out = {"ex": [], "im": []}
+            for k in axis:
+                rows = bucket.get(k, [])
+                full = len(rows) == need and all(
+                    a is not None and b is not None for a, b in rows)
+                out["ex"].append(half_up(sum(a for a, _ in rows), 1) if full else None)
+                out["im"].append(half_up(sum(b for _, b in rows), 1) if full else None)
+            return out
+
+        data[blk]["trA"] = roll(ya, 12, years)
+        data[blk]["trQ"] = roll(qa, 3, qs)
+    log("  해외 trA/trQ   월별 달러 교역액을 연·분기로 합산")
+
+    # 미국 환율 칸은 달러지수로 채운다.
+    for blk, symbol in sources.DOLLAR_INDEX.items():
+        try:
+            rows = stocks.monthly_close(symbol, months[0], months[-1])
+        except stocks.StockError as exc:
+            log(f"  [경고] 달러지수 {blk} ({symbol}) — {exc}")
+            continue
+        data[blk]["fxU"] = [None if m not in rows else half_up(rows[m], 2)
+                            for m in months]
+        have = sum(1 for v in data[blk]["fxU"] if v is not None)
+        log(f"  해외 fxU    Yahoo {symbol:10} 달러지수 값 {have}/{len(months)}")
 
     # 분기 실질 GDP 성장률
     for name, match in sources.OECD_QUARTERLY.items():
