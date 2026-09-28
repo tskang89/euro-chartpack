@@ -480,6 +480,24 @@ def build(prev: dict) -> dict:
         log(f"  [실패] 해외 환율 — {exc} (이전 값을 물려 쓴다)")
         keep_old("fxU", months)
 
+    # 경상수지 (분기·연간)
+    for freq, axis, name in (("Q", qs, "caQ"), ("A", years, "caA")):
+        try:
+            got = oecd.series(oecd.BOP,
+                              sources.OECD_CA_KEY.format(freq=freq), axis[0])
+        except oecd.OecdError as exc:
+            log(f"  [실패] 해외 {name} — {exc} (이전 값을 물려 쓴다)")
+            keep_old(name, axis)
+            continue
+        for blk, area in sources.OECD_AREAS.items():
+            rows = got.get(area, {})
+            data[blk][name] = [None if rows.get(p) is None
+                               else half_up(rows[p] / 1000, 1) for p in axis]
+        have = sum(1 for b in sources.OECD_AREAS for v in data[b][name]
+                   if v is not None)
+        log(f"  해외 {name:6} OECD BOP      값 {have}/"
+            f"{len(sources.OECD_AREAS)*len(axis)}")
+
     # 연간 실질 GDP 성장률
     try:
         got = oecd.series(oecd.QNA_G20, "all", years[0],

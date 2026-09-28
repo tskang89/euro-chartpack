@@ -275,6 +275,13 @@ OECD_ANNUAL_CPI = {
 OECD_POP_KEY = "A.USA+CHN+JPN+KOR.........."
 OECD_POP_MATCH = dict(TRANSACTION="POP", UNIT_MEASURE="PS")
 
+# 경상수지. 상대는 대세계(WXD), 항목은 경상수지(CA), 기표는 수지(B),
+# 단위는 시장환율 달러(USD_EXC). 백만 달러로 와서 1000 으로 나눠 십억으로 쓴다.
+#
+# 분기 합이 연간과 맞는지 확인했다 — 한국 2025년 분기 26.7+28.8+31.1+36.5 =
+# 123.1 로 연간 공표치와 정확히 같다. 미국·일본도 같았다.
+OECD_CA_KEY = "USA+CHN+JPN+KOR.WXD.CA.B..{freq}.USD_EXC."
+
 OECD_QUARTERLY = {
     "gqq": dict(TRANSACTION="B1GQ", TRANSFORMATION="G1", UNIT_MEASURE="PC",
                 SECTOR="S1"),
