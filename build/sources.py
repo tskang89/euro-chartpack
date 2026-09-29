@@ -115,6 +115,53 @@ ITEMS = {
             "SERV_REC", "SERV_MSC"],
 }
 
+# ------------------------------------- 독일 ifo · 프랑스 INSEE 업황지수
+# EC 서베이(ei_bssi_m_r2)는 유럽 전체를 같은 잣대로 묶은 것이라 나라 사이를
+# 견주기에 좋다. 그런데 독일·프랑스 현지에서 실제로 인용되는 것은 각국
+# 자체 조사다 — 독일은 ifo, 프랑스는 INSEE. 둘을 함께 둔다.
+#
+# 단위가 다르다는 점이 중요하다.
+#   ifo 전체      지수, 2015 = 100
+#   ifo 부문별    잔액(좋다 − 나쁘다, %p)  ← 지수가 아니다
+#   INSEE 셋 다   지수, 장기평균 = 100
+# 그래서 ifo 는 화면에서 전체와 부문별을 따로 그린다.
+SURVEY_DE = {"ifoA": "all", "ifoM": "man", "ifoS": "srv"}
+SURVEY_FR = {"insA": "001565530",     # 전체(tous secteurs)
+             "insM": "001585934",     # 제조업(industrie manufacturière)
+             "insS": "001587025"}     # 서비스(services)
+
+
+# ------------------------------------- 한국 품목별 소비자물가 (ECOS)
+# 유로지역 탭에는 품목별 막대가 있는데 한국 탭에는 없었다. OECD 는 한국의
+# 헤드라인·근원만 주고 품목 구성을 주지 않아, 한국은행 ECOS 에서 직접 받는다.
+#
+# ECOS 는 지수를 주므로 상승률은 전년동월과 견줘 코드에서 낸다.
+#
+# 화면의 이름표 순서와 정확히 같아야 한다. 유로 쪽과 같은 함정이다 —
+# 순서가 어긋나도 차트는 멀쩡해 보인다.
+KR_CPI_TABLE = "901Y009"          # 4.2.1. 소비자물가지수 (COICOP 대분류)
+KR_CPI_SPECIAL = "901Y010"        # 4.2.2. 소비자물가지수(특수분류)
+
+KR_ITEMS = {
+    # 총지수 + COICOP 12 대분류
+    "itH": [("0", KR_CPI_TABLE), ("A", KR_CPI_TABLE), ("B", KR_CPI_TABLE),
+            ("C", KR_CPI_TABLE), ("D", KR_CPI_TABLE), ("E", KR_CPI_TABLE),
+            ("F", KR_CPI_TABLE), ("G", KR_CPI_TABLE), ("H", KR_CPI_TABLE),
+            ("I", KR_CPI_TABLE), ("J", KR_CPI_TABLE), ("K", KR_CPI_TABLE),
+            ("L", KR_CPI_TABLE)],
+    # 근원 두 갈래 + 상품·서비스 세부. 한국은 근원을 둘로 낸다 —
+    # 국제 기준(식료품·에너지 제외)과 한국 전통 기준(농산물·석유류 제외)이다.
+    "itC": [("DB", KR_CPI_SPECIAL), ("QB", KR_CPI_SPECIAL),
+            ("21", KR_CPI_SPECIAL), ("211", KR_CPI_SPECIAL),
+            ("212", KR_CPI_SPECIAL), ("2125", KR_CPI_SPECIAL),
+            ("213", KR_CPI_SPECIAL),
+            ("22", KR_CPI_SPECIAL), ("221", KR_CPI_SPECIAL),
+            ("222", KR_CPI_SPECIAL), ("223", KR_CPI_SPECIAL),
+            ("110", KR_CPI_SPECIAL)],
+}
+KR_ITEM_BLOCK = "KR"
+
+
 # ------------------------------------------------------------------ 경상수지
 # 상대가 나라마다 다르다. 유로지역은 역외(EXT_EA21) 거래가 기준이고 개별 나라는
 # 대세계(WRL_REST)다. 유로지역에 대세계를 쓰면 회원국끼리의 거래가 양쪽으로

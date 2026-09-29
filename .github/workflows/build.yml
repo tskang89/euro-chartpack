@@ -39,6 +39,9 @@ jobs:
         run: pip install --quiet -r requirements.txt
 
       - name: 빌드
+        env:
+          # 한국 품목별 소비자물가(한국은행 ECOS). 없으면 그 구획만 빠진다.
+          ECOS_API_KEY: ${{ secrets.ECOS_API_KEY }}
         run: |
           python build/build.py ${{ inputs.check_only && '--check' || '' }}
 

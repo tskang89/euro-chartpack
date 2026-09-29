@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
+import os
 import re
 import sys
 from decimal import Decimal, ROUND_HALF_UP
@@ -27,6 +28,9 @@ sys.path.insert(0, str(BASE / "build"))
 
 import bis                                                       # noqa: E402
 import daily                                                     # noqa: E402
+import ecos                                                      # noqa: E402
+import ifo                                                       # noqa: E402
+import insee                                                     # noqa: E402
 import worldbank                                                 # noqa: E402
 import comext                                                    # noqa: E402
 import ecb                                                       # noqa: E402
@@ -238,6 +242,42 @@ def build(prev: dict) -> dict:
             log(f"  품목 {key:7} prc_hicp_minr    {item_month} 기준 {len(wanted)}항목")
     except eurostat.EurostatError as exc:
         log(f"  [실패] 품목별 물가 — {exc}")
+
+    # --- 독일 ifo · 프랑스 INSEE 업황지수 ---
+    try:
+        got = ifo.series(log=log)
+        for key, name in sources.SURVEY_DE.items():
+            rows = got.get(name) or {}
+            data["DE"][key] = [None if rows.get(m) is None
+                               else half_up(rows[m], 1) for m in months]
+            have = sum(1 for v in data["DE"][key] if v is not None)
+            log(f"  독일 {key:5} ifo 업황     값 {have}/{len(months)}")
+    except (ifo.IfoError, KeyError, ValueError, ImportError) as exc:
+        log(f"  [실패] 독일 ifo — {exc}")
+
+    for key, idbank in sources.SURVEY_FR.items():
+        try:
+            rows = insee.series(idbank)
+        except insee.InseeError as exc:
+            log(f"  [실패] 프랑스 {key} — {exc}")
+            continue
+        data["FR"][key] = [None if rows.get(m) is None
+                           else half_up(rows[m], 1) for m in months]
+        have = sum(1 for v in data["FR"][key] if v is not None)
+        log(f"  프랑스 {key:5} INSEE {idbank}  값 {have}/{len(months)}")
+
+    # --- 한국 품목별 소비자물가 (ECOS) ---
+    #
+    # 키가 없으면 이 구획만 빠진다. 차트팩은 공개 저장소라 키를 코드에 둘 수
+    # 없고, Actions Secret 이 없는 곳(손으로 돌리는 PC 등)에서도 나머지는
+    # 만들어져야 한다.
+    if ecos.have_key():
+        try:
+            fill_kr_items(data, meta)
+        except (ecos.EcosError, KeyError, ValueError) as exc:
+            log(f"  [실패] 한국 품목별 물가 — {exc}")
+    else:
+        log("  한국 품목별 물가 — ECOS_API_KEY 가 없어 건너뛴다")
 
     # --- 경상수지 ---
     try:
@@ -870,6 +910,48 @@ def compare(new: dict, old: dict) -> int:
     return diffs
 
 
+def fill_kr_items(data: dict, meta: dict, log=log) -> None:
+    """한국 품목별 물가를 ECOS 에서 받아 전년동월비로 바꾼다.
+
+    ECOS 는 지수를 주므로 상승률은 여기서 낸다. 한 해 전 값이 필요하므로
+    26개월을 받아 둔다. 기준 달은 '전년동월이 함께 있는 가장 최근 달' 로
+    잡되, 항목마다 발표가 어긋날 수 있으므로 총지수에서 정하고 나머지는
+    그 달에 맞춘다 — 항목마다 다른 달을 쓰면 막대끼리 견줄 수 없다.
+    """
+    blk = sources.KR_ITEM_BLOCK
+    today = datetime.date.today()
+    start = f"{today.year - 3}01"
+    end = f"{today.year}{today.month:02d}"
+
+    head_code, head_table = sources.KR_ITEMS["itH"][0]
+    # 기준 달은 총지수에서 정한다. 항목마다 다른 달을 쓰면 막대끼리 견줄 수
+    # 없다. 이것마저 실패하면 구획을 통째로 건너뛴다 — 기준 달 없이는 아무
+    # 막대도 뜻이 없다.
+    base = ecos.latest_month(
+        ecos.series(head_table, head_code, "M", start, end))
+    if not base:
+        raise ecos.EcosError("총지수에서 기준 달을 정하지 못했다")
+    meta["krItemMonth"] = f"{base[:4]}-{base[4:]}"
+
+    for key, items in sources.KR_ITEMS.items():
+        values = []
+        for code, table in items:
+            try:
+                idx = ecos.series(table, code, "M", start, end)
+            except Exception as exc:          # noqa: BLE001
+                # 한 항목이 실패했다고 구획 전체를 잃으면 안 된다. ECOS 는
+                # 호출이 몰리면 JSON 이 아닌 것을 200 으로 돌려주기도 한다.
+                log(f"    └ {key} {code} — {type(exc).__name__}: {exc}")
+                values.append(None)
+                continue
+            rate = ecos.yoy(idx, base)
+            values.append(None if rate is None else half_up(rate, 1))
+        data[blk][key] = values
+        have = sum(1 for v in values if v is not None)
+        log(f"  품목 KR.{key:4} ECOS {sources.KR_CPI_TABLE}   "
+            f"{meta['krItemMonth']} 기준 {have}/{len(values)}항목")
+
+
 def fill_daily(data: dict, meta: dict, log=log) -> None:
     """진행 중인 달 칸을 최근일 값으로 채운다.
 
@@ -960,12 +1042,32 @@ def fill_daily(data: dict, meta: dict, log=log) -> None:
         log(f"  meta.{key:6} {day} {meta[key][-1]}")
 
 
+def load_env() -> None:
+    """.env 를 환경변수로 읽는다 (python-dotenv 없이).
+
+    클라우드에서는 Actions Secret 이 환경변수로 들어오므로 이 파일이 없다.
+    손으로 돌릴 때만 쓰인다. 저장소가 공개라 .env 는 커밋되지 않는다.
+    """
+    path = BASE / ".env"
+    if not path.exists():
+        return
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="주요국 경제 차트팩 빌드")
     ap.add_argument("--check", action="store_true",
                     help="쓰지 않고 지금 index.html 과 대조만 한다")
     args = ap.parse_args()
 
+    load_env()
     prev = previous()
     data = build(prev)
 
