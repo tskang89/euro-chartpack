@@ -97,8 +97,8 @@ footer.src b{color:var(--ink);font-weight:600}
       <h1>주요국 경제 차트팩</h1>
     </div>
     <div class="stamp">
-      <span>자료 기준일 <b id="asOf"></b> · Eurostat, ECB, OECD</span>
-      <span>ECB 예금금리 <b id="dfrNow"></b> · MRO <b id="mroNow"></b> <span style="color:var(--muted)" id="polDate"></span></span>
+      <span>자료 기준일 <b id="asOf"></b> · <span id="srcNow"></span></span>
+      <span id="polNow"></span>
     </div>
   </header>
 
@@ -133,10 +133,14 @@ const C = {
   BE:{en:'Belgium', ko:'벨기에', gen:'벨기에', idx:'BEL 20'},
   IE:{en:'Ireland', ko:'아일랜드', gen:'아일랜드', idx:'ISEQ All Share'},
   AT:{en:'Austria', ko:'오스트리아', gen:'오스트리아', idx:'ATX'},
-  US:{en:'US', ko:'미국', gen:'미국', idx:'S&P 500'},
-  CN:{en:'China', ko:'중국', gen:'중국', idx:'상하이종합'},
-  JP:{en:'Japan', ko:'일본', gen:'일본', idx:'닛케이 225'},
-  KR:{en:'Korea', ko:'한국', gen:'한국', idx:'KOSPI'}
+  US:{en:'US', ko:'미국', gen:'미국', idx:'S&P 500',
+      cb:'연준 정책금리', cbNote:'목표범위 상단'},
+  CN:{en:'China', ko:'중국', gen:'중국', idx:'상하이종합',
+      cb:'인민은행 LPR', cbNote:'1년물'},
+  JP:{en:'Japan', ko:'일본', gen:'일본', idx:'닛케이 225',
+      cb:'일본은행 정책금리'},
+  KR:{en:'Korea', ko:'한국', gen:'한국', idx:'KOSPI',
+      cb:'한국은행 기준금리'}
 };
 // 1단은 권역, 2단은 유로 회원국. 유로지역을 고르면 2단이 펼쳐진다.
 const TOP = ['US','CN','EZ','JP','KR'];
@@ -674,6 +678,32 @@ function render(c){
 }
 
 let cur = 'EZ';
+// 머리말 셋째 줄은 보고 있는 탭의 정책금리다.
+//
+// 앞서는 어느 탭에서든 ECB 예금금리를 적어 두었다. 유로지역 탭에서는 맞는
+// 말이지만, 미국·중국·일본·한국 탭 머리에 ECB 금리가 붙어 있으면 그 나라
+// 금리로 읽힌다. 탭마다 그 나라 중앙은행 금리를 적는다.
+function stamp(c){
+  // 출처도 탭마다 다르다. 유로지역은 Eurostat·ECB 에서 오고, 그 밖은
+  // OECD·BIS·세계은행·IMF 에서 온다. 한 줄로 뭉뚱그리면 미국 탭에
+  // Eurostat 이 붙는다.
+  document.getElementById('srcNow').textContent = isEuro(c)
+    ? 'Eurostat, ECB, Yahoo Finance'
+    : 'OECD, BIS, 세계은행, IMF, Yahoo Finance';
+  const el = document.getElementById('polNow');
+  if(isEuro(c)){
+    el.innerHTML = 'ECB 예금금리 <b>'+nf(M.pol.dfr,2)+'%</b> · MRO <b>'
+      + nf(M.pol.mro,2)+'%</b> <span style="color:var(--muted)">('
+      + fD(M.pol.date)+' 결정 반영)</span>';
+    return;
+  }
+  const d = DATA[c], i = lastIdx(d.cbr||[]);
+  if(i < 0){ el.textContent = ''; return; }
+  const note = C[c].cbNote ? ', '+C[c].cbNote : '';
+  el.innerHTML = C[c].cb+' <b>'+nf(d.cbr[i],2)+'%</b> '
+    + '<span style="color:var(--muted)">('+fD(M.months[i])+' 기준'+note+')</span>';
+}
+
 function select(c, push){
   cur = c;
   const euro = isEuro(c);
@@ -684,6 +714,7 @@ function select(c, push){
     const on=b.dataset.c===top; b.setAttribute('aria-selected',on); b.tabIndex=on?0:-1; });
   document.querySelectorAll('#tablist2 .tab').forEach(b=>{
     const on=euro && b.dataset.c===c; b.setAttribute('aria-selected',on); b.tabIndex=on?0:-1; });
+  stamp(c);
   render(c);
   if(push){ try{ history.replaceState(null,'','#'+c); }catch(e){} }
   try{ localStorage.setItem('ecp-tab', c); }catch(e){}
@@ -709,9 +740,6 @@ let start = (location.hash||'').replace('#','');
 if(!ORDER.includes(start)){ try{ start = localStorage.getItem('ecp-tab'); }catch(e){ start=null; } }
 if(!ORDER.includes(start)) start='EZ';
 document.getElementById('asOf').textContent = fD(M.asOf);
-document.getElementById('dfrNow').textContent = nf(M.pol.dfr,2)+'%';
-document.getElementById('mroNow').textContent = nf(M.pol.mro,2)+'%';
-document.getElementById('polDate').textContent = '('+fD(M.pol.date)+' 결정 반영)';
 document.getElementById('periods').innerHTML = '<b>기간</b> 연간 '+YR+'년(이민은 '+M.yearsM[0]+'–'+M.yearsM[4]+'년), 분기 '+M.qs[0].replace('-','')+'–'+M.qs[M.qs.length-1].replace('-','')+', 월간 '+fD(M.months[0])+'–'+fD(M.months[M.months.length-1])+'(최근 60개월). 미발표 시점은 공란.';
 if(window.Chart){
   Chart.defaults.font.family = '"IBM Plex Sans KR", system-ui, sans-serif';
