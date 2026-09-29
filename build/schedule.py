@@ -27,6 +27,8 @@ import requests
 ECB_URL = "https://www.ecb.europa.eu/press/calendars/mgcgc/html/index.en.html"
 DESTATIS_URL = ("https://www.destatis.de/SiteGlobals/Forms/Suche/Termine/"
                 "DE/Terminsuche_Formular.html?nn=250582")
+EUROSTAT_PAGE = "https://ec.europa.eu/eurostat/news/release-calendar"
+EUROSTAT_JSON = "https://ec.europa.eu/eurostat/o/calendars/eventsJson"
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
@@ -205,16 +207,123 @@ def destatis_events(keep_all: bool = False) -> list[dict]:
     return out
 
 
+# ------------------------------------------------------------------ Eurostat
+# 일정표 페이지는 FullCalendar 로 그려져 문서만 받아서는 날짜가 한 줄도 없다.
+# 그 달력이 값을 받아 오는 종점이 아래 주소다. FullCalendar 가 보내는 꼴
+# 그대로 start·end 를 ISO 시각(시간대 포함)으로 주고 timeZone 을 붙여야
+# 한다 — 'YYYY-MM-DD' 만 주면 200 에 빈 본문이 온다.
+#
+# isEuroindicator=true 로 좁힌다. 유로지역 주요 지표(물가 속보치·실업률·
+# GDP·소매판매 …)만 남아, 브리핑을 받는 사람이 볼 목록이 된다. 이것을 빼면
+# 'Statistics Explained' 같은 해설 글까지 섞여 하루에 수십 건이 된다.
+_ES_KO = [
+    (r"Flash estimate inflation", "유로지역 물가 속보치"),
+    (r"^Inflation|HICP", "유로지역 소비자물가"),
+    (r"Preliminary flash estimate.*GDP|GDP.*flash", "유로지역 GDP 속보치"),
+    (r"\bGDP\b|National accounts", "유로지역 국민계정"),
+    (r"Unemployment", "유로지역 실업률"),
+    (r"Industrial pro(duction|ducer prices), domestic", "생산자물가(내수)"),
+    (r"Industrial production", "산업생산"),
+    (r"Industrial producer prices", "생산자물가"),
+    (r"Industrial import prices", "수입물가"),
+    (r"Services producer prices", "서비스 생산자물가"),
+    (r"Services production", "서비스업 생산"),
+    (r"Retail trade", "소매판매"),
+    (r"Balance of payments", "국제수지"),
+    (r"International trade in goods", "상품교역"),
+    (r"House price index", "주택가격지수"),
+    (r"Building permits", "건축허가"),
+    (r"Economic Sentiment Indicator", "경제심리지수(ESI)"),
+    (r"sector accounts", "부문별 계정"),
+    (r"Labour cost", "노동비용지수"),
+    (r"Job vacancy", "빈일자리율"),
+    (r"Government (deficit|debt)", "재정수지·정부부채"),
+]
+_ES_PERIOD = re.compile(r"^(\w+)\s+(\d{4})$")
+_ES_QUARTER = re.compile(r"^Q(\d)/(\d{4})$")
+_ES_MONTH = {"January": 1, "February": 2, "March": 3, "April": 4, "May": 5,
+             "June": 6, "July": 7, "August": 8, "September": 9,
+             "October": 10, "November": 11, "December": 12}
+
+
+def _es_title(title: str) -> str:
+    for pat, ko in _ES_KO:
+        if re.search(pat, title, re.I):
+            return ko
+    return title
+
+
+def _es_period(text: str) -> str:
+    text = (text or "").strip()
+    # 'June 2026 - Q2/2026' 처럼 두 기준을 함께 내는 지표가 있다. 토막마다
+    # 따로 옮긴다.
+    if " - " in text:
+        return " · ".join(_es_period(part) for part in text.split(" - "))
+    m = _ES_PERIOD.match(text)
+    if m and m.group(1) in _ES_MONTH:
+        return f"{m.group(2)}년 {_ES_MONTH[m.group(1)]}월"
+    m = _ES_QUARTER.match(text)
+    if m:
+        return f"{m.group(2)}년 {m.group(1)}분기"
+    return text
+
+
+def eurostat_events(start: datetime.date, end: datetime.date) -> list[dict]:
+    # 끝 날짜는 여유를 둔다. FullCalendar 는 구간 밖을 잘라 내므로 하루를
+    # 더 얹어야 마지막 날이 빠지지 않는다.
+    params = {
+        "start": f"{start.isoformat()}T00:00:00+01:00",
+        "end": f"{(end + datetime.timedelta(days=1)).isoformat()}T00:00:00+01:00",
+        "timeZone": "Europe/Brussels",
+        "theme": "", "category": "", "keywords": "",
+        "isEuroindicator": "true",
+        "authorInclude": "", "authorExclude": "",
+    }
+    try:
+        resp = requests.get(EUROSTAT_JSON, params=params, timeout=TIMEOUT,
+                            headers={"User-Agent": UA,
+                                     "Accept": "application/json"})
+    except requests.RequestException as exc:
+        raise ScheduleError(f"Eurostat: {exc}") from exc
+    if resp.status_code != 200 or not resp.text.strip():
+        raise ScheduleError(
+            f"Eurostat: HTTP {resp.status_code}, 본문 {len(resp.text)}자 "
+            f"— 종점이나 인자 꼴이 바뀌었을 수 있다")
+    rows = resp.json()
+
+    out = []
+    for row in rows:
+        if not row.get("euroind"):
+            continue
+        day = (row.get("start") or "")[:10]
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
+            continue
+        what = _es_title((row.get("title") or "").strip())
+        period = _es_period(row.get("period"))
+        if period:
+            what += f" · {period}"
+        if row.get("preliminary"):
+            what += " (잠정 일정)"
+        out.append({
+            "date": day, "kind": "release", "area": "EZ",
+            "who": "Eurostat", "what": what, "url": EUROSTAT_PAGE,
+        })
+    return out
+
+
 # ------------------------------------------------------------------ 모으기
 def week(today: datetime.date, days: int = 7, log=print) -> tuple[list, list]:
     """(일정, 경고). 오늘부터 days 일까지."""
     end = today + datetime.timedelta(days=days - 1)
     events, warn = [], []
 
-    for name, fn in (("ECB", ecb_events), ("Destatis", destatis_events)):
+    sources = (("ECB", ecb_events),
+               ("Eurostat", lambda: eurostat_events(today, end)),
+               ("Destatis", destatis_events))
+    for name, fn in sources:
         try:
             got = fn()
-        except ScheduleError as exc:
+        except (ScheduleError, ValueError) as exc:
             warn.append(f"{name} 일정을 받지 못했다 — {exc}")
             log(f"  [실패] {name} — {exc}")
             continue
