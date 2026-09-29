@@ -311,6 +311,157 @@ def eurostat_events(start: datetime.date, end: datetime.date) -> list[dict]:
     return out
 
 
+# ------------------------------------------------------------------ 연준
+FED_URL = "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
+
+_FED_YEAR = re.compile(r"(\d{4}) FOMC Meetings")
+_FED_ROW = re.compile(r"fomc-meeting__month[^>]*><strong>([^<]+)</strong>"
+                      r".*?fomc-meeting__date[^>]*>([^<]+)<", re.S)
+_FED_MON = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
+            "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
+
+
+def fed_events() -> list[dict]:
+    """FOMC 회의. 결정과 성명은 **둘째 날** 나온다.
+
+    연준 표는 달과 날짜를 따로 적는다. 달을 걸치는 회의는 'Oct/Nov' 에
+    '31-1' 처럼 적히는데, 이때 결정일은 뒤쪽 달의 1일이다. 앞 달을 그대로
+    쓰면 10월 1일이 되어 한 달을 통째로 어긋난다.
+
+    연도별 묶음이 문서 안에서 연도순으로 놓여 있지 않다(2026 다음이 2025 이고
+    2027 은 맨 뒤다). 그래서 묶음 제목의 위치로 구간을 갈라 회의를 붙인다.
+    """
+    doc = _get(FED_URL)
+    marks = sorted((m.start(), int(m.group(1))) for m in _FED_YEAR.finditer(doc))
+    if not marks:
+        raise ScheduleError("연준: 연도 묶음을 찾지 못했다")
+
+    def year_at(pos: int) -> int | None:
+        found = None
+        for start, year in marks:
+            if start <= pos:
+                found = year
+            else:
+                break
+        return found
+
+    out = []
+    for m in _FED_ROW.finditer(doc):
+        year = year_at(m.start())
+        if year is None:
+            continue
+        months = [_FED_MON.get(p.strip().lower()[:3])
+                  for p in m.group(1).split("/")]
+        days = re.findall(r"\d+", m.group(2))
+        if not months or months[-1] is None or not days:
+            continue
+        month, day = months[-1], int(days[-1])
+        # 'Dec 31-1' 처럼 해를 걸치면 뒤쪽은 다음 해다.
+        y = year + 1 if (len(months) > 1 and months[0] == 12 and month == 1) \
+            else year
+        try:
+            date = datetime.date(y, month, day)
+        except ValueError:
+            continue
+        out.append({
+            "date": date.isoformat(), "kind": "policy", "area": "US",
+            "who": "미국 연준", "what": "FOMC 통화정책 결정 (둘째 날)",
+            "url": FED_URL,
+        })
+    if not out:
+        raise ScheduleError("연준: 회의를 하나도 읽지 못했다")
+    return out
+
+
+# ------------------------------------------------------------------ 영란은행
+BOE_URL = "https://www.bankofengland.co.uk/monetary-policy/upcoming-mpc-dates"
+
+_BOE_YEAR = re.compile(r"(\d{4})\s+confirmed dates", re.I)
+_BOE_DAY = re.compile(
+    r"(?:Monday|Tuesday|Wednesday|Thursday|Friday)\s+(\d{1,2})\s+"
+    r"(January|February|March|April|May|June|July|August|September|"
+    r"October|November|December)", re.I)
+
+
+def boe_events() -> list[dict]:
+    """영란은행 MPC 발표일.
+
+    날짜에 연도가 붙어 있지 않고 '2026 confirmed dates' 같은 제목 아래
+    묶여 있다. 제목 위치로 구간을 갈라 연도를 붙인다.
+    """
+    text = html.unescape(re.sub(r"<[^>]+>", "\n", _get(BOE_URL)))
+    marks = sorted((m.start(), int(m.group(1)))
+                   for m in _BOE_YEAR.finditer(text))
+    if not marks:
+        raise ScheduleError("영란은행: 연도 제목을 찾지 못했다")
+
+    out = []
+    for m in _BOE_DAY.finditer(text):
+        year = None
+        for start, y in marks:
+            if start <= m.start():
+                year = y
+            else:
+                break
+        if year is None:
+            continue
+        month = _FED_MON[m.group(2).lower()[:3]]
+        try:
+            date = datetime.date(year, month, int(m.group(1)))
+        except ValueError:
+            continue
+        out.append({
+            "date": date.isoformat(), "kind": "policy", "area": "GB",
+            "who": "영란은행", "what": "MPC 통화정책 결정 (정책금리)",
+            "url": BOE_URL,
+        })
+    if not out:
+        raise ScheduleError("영란은행: 발표일을 하나도 읽지 못했다")
+    # 같은 날이 두 번 잡히는 일이 있다(본문과 관련 링크에 같이 적힌다).
+    seen, uniq = set(), []
+    for e in out:
+        if e["date"] not in seen:
+            seen.add(e["date"])
+            uniq.append(e)
+    return uniq
+
+
+# ------------------------------------------------------------------ 한국은행
+BOK_URL = ("https://www.bok.or.kr/portal/singl/crncyPolicyDrcMtg/listYear.do"
+           "?mtgSe=A&menuNo=200755")
+
+_BOK_YEAR = re.compile(r"<h3>(\d{4})년</h3>")
+_BOK_DAY = re.compile(r"(\d{2})월\s*(\d{2})일\(")
+
+
+def bok_events(today: datetime.date | None = None) -> list[dict]:
+    """한국은행 금융통화위원회 통화정책방향 결정회의.
+
+    해마다 한 쪽이라 올해와 내년을 따로 받는다. 내년 일정은 연말에야 올라
+    오므로 빈 쪽이 오는 것이 정상이다 — 그때는 조용히 건너뛴다.
+    """
+    today = today or datetime.date.today()
+    out = []
+    for year in (today.year, today.year + 1):
+        doc = _get(f"{BOK_URL}&pYear={year}")
+        shown = _BOK_YEAR.search(doc)
+        if not shown or int(shown.group(1)) != year:
+            continue                     # 엉뚱한 해가 왔다 — 쓰지 않는다
+        for m in _BOK_DAY.finditer(doc):
+            try:
+                date = datetime.date(year, int(m.group(1)), int(m.group(2)))
+            except ValueError:
+                continue
+            out.append({
+                "date": date.isoformat(), "kind": "policy", "area": "KR",
+                "who": "한국은행", "what": "금통위 통화정책방향 결정",
+                "url": BOK_URL,
+            })
+    if not out:
+        raise ScheduleError("한국은행: 회의일을 하나도 읽지 못했다")
+    return out
+
+
 # ------------------------------------------------------------------ 모으기
 def week(today: datetime.date, days: int = 7, log=print) -> tuple[list, list]:
     """(일정, 경고). 오늘부터 days 일까지."""
@@ -318,6 +469,9 @@ def week(today: datetime.date, days: int = 7, log=print) -> tuple[list, list]:
     events, warn = [], []
 
     sources = (("ECB", ecb_events),
+               ("연준", fed_events),
+               ("영란은행", boe_events),
+               ("한국은행", lambda: bok_events(today)),
                ("Eurostat", lambda: eurostat_events(today, end)),
                ("Destatis", destatis_events))
     for name, fn in sources:
