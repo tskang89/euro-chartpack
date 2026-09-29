@@ -454,9 +454,18 @@ function sections(c){ return isEuro(c) ? euroSections(c) : globalSections(c); }
 let charts = [];
 function kpis(c){
   const d = DATA[c];
-  const item = (k, arr, lab, unit, dec, lastLabFn) => {
-    if(!arr) return '';            // 그 블록에 없는 계열
-    const i = lastIdx(arr); if(i<0) return '';
+  // 값이 없어도 칸은 남긴다.
+  //
+  // 앞서는 계열이 없으면 칸을 통째로 뺐다. 그러면 중국만 근원물가·실업률이
+  // 없어 칸이 일곱이 되고, 뒤의 칸들이 한 자리씩 앞으로 밀린다. 탭을 옮겨
+  // 가며 같은 자리를 보는 자료인데 자리가 흔들리면 눈이 매번 헤맨다.
+  // '–' 와 까닭을 적어 자리를 지킨다.
+  const blank = (k, why) =>
+    `<div class="kpi"><span class="k">${k}</span><span class="v">–</span>`
+    + `<span class="p"><span>${why}</span></span></div>`;
+  const item = (k, arr, why, unit, dec, lastLabFn) => {
+    if(!arr) return blank(k, why || '자료 없음');
+    const i = lastIdx(arr); if(i<0) return blank(k, why || '자료 없음');
     const v = arr[i], p = i>0 ? arr[i-1] : null;
     const dv = p==null ? null : v-p;
     const cls = dv==null||Math.abs(dv)<1e-9 ? 'd-flat' : (dv>0?'d-up':'d-down');
@@ -467,25 +476,35 @@ function kpis(c){
   const qL = i => M.qs[i].replace('-',' '), mL = i => M.months[i].replace('-','.');
   // 최근일로 채운 계열은 KPI 날짜도 그 날짜로 적는다.
   const mLd = key => i => (i === M.months.length-1 && dDay(c,key)) ? fD(dDay(c,key)) : mL(i);
+  const euro = isEuro(c);
+  // 어느 탭을 열어도 같은 여덟 칸이 같은 차례로 놓인다. 탭을 옮겨 가며
+  // 견주는 자료인데 칸이 다르면 눈이 매번 자리를 다시 찾아야 한다.
+  //
+  // 같은 이름 아래 출처와 주기가 다른 것은 있다. 그건 숨기지 않고 칸 밑의
+  // 시점 표시로 드러난다 — 유로지역 수출입은 분기(2026 Q2), 그 밖은
+  // 월간(2026.08) 이다. 자세한 것은 각 구획의 각주에 적혀 있다.
+  const gdp = euro ? d.gdpEur.map((v,i)=> v*M.fxA[i]/1e6) : d.gdpUSD;
+  const pol = euro ? M.dfr : d.cbr;
+  const ex  = euro ? div((d.trQ||{}).ex, 1e3) : d.exUSD;
+  const im  = euro ? div((d.trQ||{}).im, 1e3) : d.imUSD;
+  const tL  = euro ? qL : mL;
+
   let h = '';
-  if(isEuro(c)){
-    h += item('실질 GDP 전기비', d.gqq, '', '%', 1, qL);
-    h += item('HICP 상승률', d.cpiM, '', '%', 1, mL);
-    h += item('근원 HICP', d.coreM, '', '%', 1, mL);
-    h += item('실업률', d.unM, '', '%', 1, mL);
-    h += item((c==='EZ'?'유로지역':'')+' 10년물 금리', d.y10, '', '%', 2, mL);
-    if(c==='DE') h += `<div class="kpi"><span class="k">대독일 스프레드</span><span class="v">–</span><span class="p"><span>독일 = 기준물</span></span></div>`;
+  // 중국은 OECD 에 비교 가능한 근원물가·실업률 계열을 내지 않는다.
+  const noOecd = 'OECD 계열 없음';
+  h += item('명목 GDP', gdp, '', '조$', 2, i => M.years[i]);
+  h += item('실질 GDP 전기비', d.gqq, '', '%', 1, qL);
+  h += item('소비자물가', d.cpiM, '', '%', 1, mL);
+  h += item('근원물가', d.coreM, noOecd, '%', 1, mL);
+  h += item('실업률', d.unM, noOecd, '%', 1, mL);
+  h += item(euro ? 'ECB 예금금리' : '정책금리', pol, '', '%', 2, mL);
+  h += item('10년물 금리', d.y10, '', '%', 2, mLd('y10'));
+  h += item('수출', ex, '', '십억$', 1, tL);
+  h += item('수입', im, '', '십억$', 1, tL);
+  // 대독일 스프레드는 유로지역 안에서만 뜻이 있다. 공통 칸 뒤에 덧붙인다.
+  if(euro){
+    if(c==='DE') h += blank('대독일 스프레드', '독일 = 기준물');
     else h += item('대독일 스프레드', d.spr, '', 'bp', 0, mL);
-  } else {
-    h += item('명목 GDP', d.gdpUSD, '', '조$', 2, i => M.years[i]);
-    h += item('실질 GDP 전기비', d.gqq, '', '%', 1, qL);
-    h += item('소비자물가', d.cpiM, '', '%', 1, mL);
-    h += item('근원물가', d.coreM, '', '%', 1, mL);
-    h += item('실업률', d.unM, '', '%', 1, mL);
-    h += item('정책금리', d.cbr, '', '%', 2, mL);
-    h += item('10년물 금리', d.y10, '', '%', 2, mLd('y10'));
-    h += item('수출', d.exUSD, '', '십억$', 1, mL);
-    h += item('수입', d.imUSD, '', '십억$', 1, mL);
   }
   document.getElementById('kpis').innerHTML = h;
 }
