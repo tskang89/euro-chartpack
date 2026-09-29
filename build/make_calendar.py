@@ -38,37 +38,37 @@ def esc(text: str) -> str:
 
 
 def render_days(events: list[dict], today: datetime.date) -> str:
+    """일정이 있는 날만 싣는다.
+
+    이레 치일 때는 빈 날도 '없습니다'로 두어 한 주 전체가 보였다. 한 달
+    치에서 그러면 빈 칸이 스무 개 넘게 깔려 정작 있는 날이 묻힌다.
+    """
     by_day: dict[str, list[dict]] = {}
     for e in events:
         by_day.setdefault(e["date"], []).append(e)
 
     out = []
-    for i in range(DAYS):
-        day = today + datetime.timedelta(days=i)
-        key = day.isoformat()
-        rows = by_day.get(key, [])
-        # 일정이 없는 주말은 아예 접는다. 빈 칸이 이레 내내 이어지면
-        # 정작 있는 날이 묻힌다.
-        if not rows and day.weekday() >= 5:
-            continue
-        cls = "day today" if i == 0 else "day"
+    for key in sorted(by_day):
+        day = datetime.date.fromisoformat(key)
+        cls = "day today" if day == today else "day"
         head = (f'<h2><span class="d">{day.month}.{day.day}</span>'
                 f'<span class="w">{WEEKDAY[day.weekday()]}요일</span></h2>')
-        if not rows:
-            body = '<div class="empty">예정된 발표·회의가 없습니다</div>'
-        else:
-            items = []
-            for e in rows:
-                items.append(
-                    f'<li class="{esc(e["kind"])}">'
-                    f'<span class="tag">{TAG.get(e["kind"], e["kind"])}</span>'
-                    f'<span class="body">'
-                    f'<a class="src" href="{esc(e["url"])}" target="_blank" '
-                    f'rel="noopener"><span class="who">{esc(e["who"])}</span></a> '
-                    f'<span class="what">{esc(e["what"])}</span>'
-                    f'</span></li>')
-            body = "<ul>" + "".join(items) + "</ul>"
-        out.append(f'<section class="{cls}">{head}{body}</section>')
+        items = []
+        for e in by_day[key]:
+            klass = esc(e["kind"]) + (" major" if e.get("major") else "")
+            items.append(
+                f'<li class="{klass}">'
+                f'<span class="tag">{TAG.get(e["kind"], e["kind"])}</span>'
+                f'<span class="body">'
+                f'<a class="src" href="{esc(e["url"])}" target="_blank" '
+                f'rel="noopener"><span class="who">{esc(e["who"])}</span></a> '
+                f'<span class="what">{esc(e["what"])}</span>'
+                f'</span></li>')
+        out.append(f'<section class="{cls}">{head}'
+                   f'<ul>{"".join(items)}</ul></section>')
+    if not out:
+        return ('<div class="empty">앞으로 한 달 안에 잡힌 발표·회의가 '
+                '없습니다</div>')
     return "\n".join(out)
 
 
@@ -83,6 +83,8 @@ Eurostat(유로지역 주요 지표), 독일 통계청. 폴란드·체코·스�
 내므로, 그 날짜만 적었습니다. 연준의 새 목표범위는 대개 그 다음 날부터
 적용됩니다.
 <br><br>
+<b>굵게 표시한 것</b> 통화정책 결정, GDP, 소비자물가입니다. '물가'를 글자 그대로 잡으면 생산자·수입·도매물가까지 걸려 한 달 치의 절반 가까이가 굵어져 강조가 힘을 잃습니다.
+<br><br>
 <b>추려 싣습니다</b>
 <ul>
 <li>Eurostat 은 유로지역 주요 지표(euro indicators)로 좁혔습니다. 해설 글까지
@@ -95,8 +97,8 @@ Eurostat 유로지역 발표는 대개 현지 11시, 독일 통계청은 8시입
 
 
 def build(today: datetime.date) -> str:
-    log(f"일정 수집 — {today} 부터 {DAYS}일")
-    events, warn = schedule.week(today, DAYS, log=log)
+    log(f"일정 수집 — {today} 부터 {schedule.month_end(today)} 까지")
+    events, warn = schedule.week(today, log=log)
     warn += policy_dates.health(today)
     for w in policy_dates.health(today):
         log(w)
@@ -124,7 +126,7 @@ def build(today: datetime.date) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="향후 1주일 주요 일정 페이지")
+    ap = argparse.ArgumentParser(description="향후 1개월 주요 일정 페이지")
     ap.add_argument("--check", action="store_true",
                     help="쓰지 않고 만들어만 본다")
     ap.add_argument("--date", help="기준일을 바꿔 본다 (YYYY-MM-DD)")

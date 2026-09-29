@@ -143,6 +143,9 @@ _DE_KO = [
     (r"Einzelhandel\s*—\s*Umsatz", "소매판매"),
     (r"Dienstleistungen\s*—\s*Umsatz, Besch\w*ftigte", "서비스업 매출·고용"),
     (r"Baugenehmigungen?", "건축허가"),
+    (r"Verarbeitendes Gewerbe.*Besch\w*ftigte", "제조업 고용"),
+    (r"Auftragsbestand", "제조업 수주잔고"),
+    (r"Verarbeitendes Gewerbe", "제조업"),
 ]
 _MONTH_KO = {"Januar": 1, "Februar": 2, "März": 3, "Maerz": 3, "April": 4,
              "Mai": 5, "Juni": 6, "Juli": 7, "August": 8, "September": 9,
@@ -177,11 +180,30 @@ def _de_period(text: str) -> str:
     return text
 
 
-def destatis_events(keep_all: bool = False) -> list[dict]:
-    doc = _get(DESTATIS_URL)
-    blocks = _BLOCK.findall(doc)
-    if not blocks:
+def destatis_events(keep_all: bool = False, until: str | None = None,
+                    max_pages: int = 6) -> list[dict]:
+    """독일 통계청 발표일정.
+
+    한 쪽에 여남은 건뿐이라 이레 치는 첫 쪽으로 됐지만 한 달 치는 모자란다.
+    쪽을 넘겨 가며 받되, 받은 날짜가 찾는 구간을 넘어서면 멈춘다. 끝까지
+    긁을 이유가 없다.
+    """
+    out: list[dict] = []
+    for page in range(1, max_pages + 1):
+        url = DESTATIS_URL + (f"&gtp=245710_list%253D{page}" if page > 1 else "")
+        got = _destatis_page(_get(url), keep_all)
+        if not got:
+            break
+        out += got
+        if until and max(e["date"] for e in got) > until:
+            break
+    if not out:
         raise ScheduleError("Destatis: c-result 블록을 하나도 못 읽었다")
+    return out
+
+
+def _destatis_page(doc: str, keep_all: bool) -> list[dict]:
+    blocks = _BLOCK.findall(doc)
     out = []
     for block in blocks:
         head, day = _HEAD.search(block), _DAY.search(block)
@@ -238,6 +260,12 @@ _ES_KO = [
     (r"Labour cost", "노동비용지수"),
     (r"Job vacancy", "빈일자리율"),
     (r"Government (deficit|debt)", "재정수지·정부부채"),
+    (r"Interest rates \(3 months\)|Short[- ]term interest", "단기금리(3개월)"),
+    (r"Long[- ]term gvt bond yield|Long[- ]term interest", "장기 국채금리"),
+    (r"Production in construction", "건설생산"),
+    (r"Volume of sales|Turnover", "매출"),
+    (r"Tourism", "관광"),
+    (r"Energy", "에너지"),
 ]
 _ES_PERIOD = re.compile(r"^(\w+)\s+(\d{4})$")
 _ES_QUARTER = re.compile(r"^Q(\d)/(\d{4})$")
@@ -462,10 +490,42 @@ def bok_events(today: datetime.date | None = None) -> list[dict]:
     return out
 
 
+# ------------------------------------------------------------------ 눈에 띄게
+# 한 달 치를 늘어놓으면 쉰 건이 넘는다. 그 가운데 사무소가 반드시 챙겨야 할
+# 셋 — 통화정책 결정, GDP, 물가 — 은 굵게 뽑아 둔다. 나머지는 배경이다.
+#
+# '물가'를 글자 그대로 잡으면 생산자·수입·도매·서비스 물가까지 걸려 마흔
+# 남짓 가운데 열여덟이 굵어진다. 그쯤 되면 강조가 아니라 배경이다. 금리를
+# 움직이는 것은 소비자물가이므로 거기로 좁힌다.
+_MAJOR = re.compile(
+    r"GDP|국민계정|국내총생산|소비자물가|인플레이션|HICP|"
+    r"유로지역 물가 속보치", re.I)
+
+
+def is_major(event: dict) -> bool:
+    if event["kind"] == "policy":
+        return True
+    return bool(_MAJOR.search(event["what"]))
+
+
 # ------------------------------------------------------------------ 모으기
-def week(today: datetime.date, days: int = 7, log=print) -> tuple[list, list]:
-    """(일정, 경고). 오늘부터 days 일까지."""
-    end = today + datetime.timedelta(days=days - 1)
+def month_end(today: datetime.date) -> datetime.date:
+    """오늘부터 '한 달 뒤 같은 날'. 그 날이 없는 달이면 그 달 마지막 날."""
+    y, m = today.year + (today.month == 12), today.month % 12 + 1
+    day = today.day
+    while day > 1:
+        try:
+            return datetime.date(y, m, day)
+        except ValueError:
+            day -= 1
+    return datetime.date(y, m, 1)
+
+
+def week(today: datetime.date, days: int | None = None,
+         log=print) -> tuple[list, list]:
+    """(일정, 경고). 오늘부터 한 달까지(days 를 주면 그 날 수만큼)."""
+    end = (today + datetime.timedelta(days=days - 1) if days
+           else month_end(today))
     events, warn = [], []
 
     sources = (("ECB", ecb_events),
@@ -473,7 +533,7 @@ def week(today: datetime.date, days: int = 7, log=print) -> tuple[list, list]:
                ("영란은행", boe_events),
                ("한국은행", lambda: bok_events(today)),
                ("Eurostat", lambda: eurostat_events(today, end)),
-               ("Destatis", destatis_events))
+               ("Destatis", lambda: destatis_events(until=end.isoformat())))
     for name, fn in sources:
         try:
             got = fn()
@@ -484,12 +544,27 @@ def week(today: datetime.date, days: int = 7, log=print) -> tuple[list, list]:
         hit = [e for e in got
                if today <= datetime.date.fromisoformat(e["date"]) <= end]
         events += hit
-        log(f"  {name:9} 전체 {len(got):3}건 중 이 주 {len(hit)}건")
+        log(f"  {name:9} 전체 {len(got):3}건 중 이 구간 {len(hit)}건")
 
     import policy_dates
     hit = policy_dates.upcoming(today, end)
     events += hit
-    log(f"  중앙은행     표에서 이 주 {len(hit)}건")
+    log(f"  중앙은행     표에서 이 구간 {len(hit)}건")
 
-    events.sort(key=lambda e: (e["date"], e["kind"] != "policy", e["who"]))
+    # Eurostat 은 같은 발표를 여러 줄로 내는 일이 있다(같은 날·같은 제목·
+    # 같은 기준기간). 화면에서는 한 줄이어야 한다.
+    seen, uniq = set(), []
+    for e in events:
+        key = (e["date"], e["who"], e["what"])
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(e)
+    events = uniq
+
+    for e in events:
+        e["major"] = is_major(e)
+    # 같은 날 안에서는 통화정책, 그다음 굵게 뽑은 것, 그다음 기관 이름 순.
+    events.sort(key=lambda e: (e["date"], e["kind"] != "policy",
+                               not e["major"], e["who"]))
     return events, warn

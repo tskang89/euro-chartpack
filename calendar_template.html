@@ -57,6 +57,8 @@ ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px
 li{background:var(--surface);border:1px solid var(--rule);border-radius:10px;
   padding:10px 12px;display:flex;gap:10px;align-items:flex-start}
 li.policy{border-color:var(--hot);background:var(--hot-soft)}
+li.major .what{font-weight:600;color:var(--ink)}
+li.major:not(.policy){border-color:var(--rule-strong);box-shadow:inset 3px 0 0 var(--accent)}
 .tag{flex:none;font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.04em;
   border-radius:999px;padding:2px 8px;background:var(--surface-2);color:var(--ink-2);
   white-space:nowrap;margin-top:1px}
@@ -81,8 +83,8 @@ a.src:hover .who{text-decoration:underline}
 </style></head><body>
 <div class="wrap">
 <header>
-  <p class="eyebrow">Week ahead</p>
-  <h1>향후 1주일 주요 일정</h1>
+  <p class="eyebrow">Month ahead</p>
+  <h1>향후 1개월 주요 일정</h1>
   <p class="stamp">__STAMP__</p>
 </header>
 __DAYS__
