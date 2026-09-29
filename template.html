@@ -153,6 +153,15 @@ const nf = (v,d) => v==null||isNaN(v) ? '–' : (Math.abs(v)<1e-9?0:v).toLocaleS
 const div = (a,k) => a.map(v => v==null?null:v/k);
 const cst = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const lastIdx = a => { for(let i=a.length-1;i>=0;i--) if(a[i]!=null) return i; return -1; };
+// 진행 중인 달을 최근일 값으로 채운 계열이 있다(build/daily.py). 그 칸은
+// 하루치라 월평균·월말값과 성격이 다르므로, 축 이름을 '26.09' 가 아니라
+// '9.29' 로 바꿔 눈에 띄게 한다.
+const dDay = (c,k) => (c==='__meta__' ? (M.dl||{}) : ((DATA[c]||{}).dl||{}))[k] || null;
+const dLab = d => d ? (+d.slice(5,7))+'.'+(+d.slice(8,10)) : null;
+// 축 이름 배열의 마지막 칸만 날짜로 갈아 끼운다.
+const axD = (base, day) => { if(!day) return base; const a = base.slice(); a[a.length-1] = dLab(day); return a; };
+// 각주 한 줄. 무엇이 하루치인지 글로도 남긴다.
+const dNote = (day, what) => day ? ' 마지막 점('+dLab(day)+')은 '+what+'.' : '';
 
 function euroSections(c){
   const d = DATA[c], nm = C[c].ko, isEZ = c==='EZ';
@@ -248,21 +257,21 @@ function euroSections(c){
        note:'월간 청년 실업률은 25세 미만 기준(une_rt_m).'}
     ]},
     {n:'10', t:'주가', sub:'월간 · 월말 종가', charts:[
-      {t:C[c].idx+' 지수', u:'포인트', type:'line', L:LMS, dec:0, zeroBase:false, S:[{n:C[c].idx,d:d.stk,col:'--s1'}],
-       note:'월말 종가(Yahoo Finance 기준).'+(M.stkNote?' '+M.stkNote+'.':'')},
-      {t:C[c].idx+' 월간 상승률', u:'% 전월비', type:'bar', L:LMS, dec:1, S:[{n:'월간 상승률',d:d.stkR,col:'--s2'}],
-       note:'월말 종가 기준 전월 대비 등락률.'+(M.stkNote?' '+M.stkNote+'.':'')}
+      {t:C[c].idx+' 지수', u:'포인트', type:'line', L:axD(LMS,dDay(c,'stk')), dec:0, zeroBase:false, S:[{n:C[c].idx,d:d.stk,col:'--s1'}],
+       note:'월말 종가(Yahoo Finance 기준).'+(M.stkNote?' '+M.stkNote+'.':'')+dNote(dDay(c,'stk'),'그날 종가(월 진행 중)')},
+      {t:C[c].idx+' 월간 상승률', u:'% 전월비', type:'bar', L:axD(LMS,dDay(c,'stkR')), dec:1, S:[{n:'월간 상승률',d:d.stkR,col:'--s2'}],
+       note:'월말 종가 기준 전월 대비 등락률.'+(M.stkNote?' '+M.stkNote+'.':'')+dNote(dDay(c,'stkR'),'그날까지의 등락률')}
     ]},
     {n:'11', t:'금리', sub:'월간 · 정책금리 · 10년물 국채', charts:[
       {t:'ECB 정책금리와 10년물 국채금리', u:'%', type:'line', L:LM, dec:2, S:y10Series,
-       note:'정책금리는 월말 기준, 10년물은 월평균(Maastricht 수렴기준 금리).'},
+       note:'정책금리는 월말 기준, 10년물은 월평균(Maastricht 수렴기준 금리). Maastricht 금리는 정의가 월평균이라 일별 판이 없다 — 진행 중인 달은 그달이 끝나야 나온다.'},
       {t:'10년물 국채금리 스프레드(대 독일)', u:'bp', type:'line', L:LM, dec:0, S:sprSeries, note:sprNote}
     ]},
     {n:'12', t:'환율', sub:'월간 · ECB 기준환율 월평균', charts:[
-      {t:'EUR/USD', u:'달러 / 유로', type:'line', L:LM, dec:4, zeroBase:false, S:[{n:'EUR/USD',d:M.fxUsd,col:'--s1'}],
-       note:'1유로당 달러. 상승은 유로 강세.'},
-      {t:'EUR/KRW', u:'원 / 유로', type:'line', L:LM, dec:2, zeroBase:false, S:[{n:'EUR/KRW',d:M.fxKrw,col:'--s2'}],
-       note:'1유로당 원. 상승은 유로 대비 원화 약세. 유로화는 공통 통화라 모든 탭에서 같은 값.'}
+      {t:'EUR/USD', u:'달러 / 유로', type:'line', L:axD(LM,dDay('__meta__','fxUsd')), dec:4, zeroBase:false, S:[{n:'EUR/USD',d:M.fxUsd,col:'--s1'}],
+       note:'1유로당 달러. 상승은 유로 강세.'+dNote(dDay('__meta__','fxUsd'),'그날 기준환율(월평균 아님)')},
+      {t:'EUR/KRW', u:'원 / 유로', type:'line', L:axD(LM,dDay('__meta__','fxKrw')), dec:2, zeroBase:false, S:[{n:'EUR/KRW',d:M.fxKrw,col:'--s2'}],
+       note:'1유로당 원. 상승은 유로 대비 원화 약세. 유로화는 공통 통화라 모든 탭에서 같은 값.'+dNote(dDay('__meta__','fxKrw'),'그날 기준환율(월평균 아님)')}
     ]},
     {n:'13', t:'생산', sub:'월간 · 2021=100 · 계절조정', charts:[
       {t:'산업생산 · 전체', u:'지수(2021=100)', type:'line', L:LM, dec:1, zeroBase:false, S:[
@@ -388,29 +397,30 @@ function globalSections(c){
        note:'OECD 표준 정의(15~64세 노동력 대비).'+(noUN?' 중국은 OECD 에 비교 가능한 계열이 없어 비워 두었다. 중국은 도시조사실업률을 따로 발표하나 기준이 다르다.':'')}
     ]},
     {n:'8', t:'주가', sub:'월간 · 월말 종가', charts:[
-      {t:C[c].idx+' 지수', u:'포인트', type:'line', L:LMS, dec:0, zeroBase:false, S:[
+      {t:C[c].idx+' 지수', u:'포인트', type:'line', L:axD(LMS,dDay(c,'stk')), dec:0, zeroBase:false, S:[
         {n:C[c].idx,d:d.stk,col:'--s1'}],
-       note:'월말 종가(Yahoo Finance 기준).'+(M.stkNote?' '+M.stkNote+'.':'')},
-      {t:C[c].idx+' 월간 상승률', u:'% 전월비', type:'bar', L:LMS, dec:1, S:[
+       note:'월말 종가(Yahoo Finance 기준).'+(M.stkNote?' '+M.stkNote+'.':'')+dNote(dDay(c,'stk'),'그날 종가(월 진행 중)')},
+      {t:C[c].idx+' 월간 상승률', u:'% 전월비', type:'bar', L:axD(LMS,dDay(c,'stkR')), dec:1, S:[
         {n:'월간 상승률',d:d.stkR,col:'--s2'}],
-       note:'월말 종가 기준 전월 대비 등락률.'+(M.stkNote?' '+M.stkNote+'.':'')}
+       note:'월말 종가 기준 전월 대비 등락률.'+(M.stkNote?' '+M.stkNote+'.':'')+dNote(dDay(c,'stkR'),'그날까지의 등락률')}
     ]},
     {n:'9', t:'금리', sub:'월간 · 정책금리 · 10년물 국채', charts:[
-      {t:'정책금리와 10년물 국채금리', u:'%', type:'line', L:LM, dec:2, S:[
+      {t:'정책금리와 10년물 국채금리', u:'%', type:'line', L:axD(LM,dDay(c,'y10')), dec:2, S:[
         {n:'정책금리',d:d.cbr,col:'--s4'},
         {n:'10년물 국채',d:d.y10,col:'--s1'}],
-       note:'정책금리는 중앙은행이 정한 금리(자료: BIS), 10년물은 국채수익률 월평균(자료: OECD).'+(c==='US'?' 연준은 폭 25bp 의 목표범위로 정하는데, 여기서는 그 상단을 적는다(예: 3.50~3.75% 이면 3.75%).':'')+(c==='CN'?' 중국 정책금리는 대출우대금리(LPR) 기준.':'')}
+       note:'정책금리는 중앙은행이 정한 금리(자료: BIS), 10년물은 국채수익률 월평균(자료: OECD).'+(c==='US'?' 연준은 폭 25bp 의 목표범위로 정하는데, 여기서는 그 상단을 적는다(예: 3.50~3.75% 이면 3.75%).':'')+(c==='CN'?' 중국 정책금리는 대출우대금리(LPR) 기준.':'')+dNote(dDay(c,'y10'),'10년물의 그날 종가(월평균 아님)')}
     ]},
     {n:'10', t:'환율', sub:'월간 · 대미달러 · 대유로', charts:[
       {t: c==='US' ? '달러지수 (ICE DXY)' : '대미달러 환율',
-       u: c==='US' ? '지수' : '1달러당', type:'line', L:LM, dec:2, zeroBase:false, S:[
+       u: c==='US' ? '지수' : '1달러당', type:'line', L:axD(LM,dDay(c,'fxU')), dec:2, zeroBase:false, S:[
         {n: c==='US' ? '달러지수' : '대미달러', d:d.fxU, col:'--s1'}],
-       note: c==='US'
+       note: (c==='US'
          ? 'ICE 달러지수(DXY) 월말 종가. 주요 6개 통화 대비 달러 가치로, 상승은 달러 강세. 다른 탭의 대미달러 환율과는 단위가 다르다. 자료: Yahoo Finance.'
-         : '1달러당 자국 통화. 상승은 자국 통화 약세. 월평균. 자료: OECD.'},
-      ...(c==='US' ? [] : [{t:'대유로 환율', u:'1유로당', type:'line', L:LM, dec:2, zeroBase:false, S:[
+         : '1달러당 자국 통화. 상승은 자국 통화 약세. 월평균. 자료: OECD.')
+         +dNote(dDay(c,'fxU'), c==='US' ? '그날 종가' : '그날 ECB 기준환율을 교차해 낸 값(월평균 아님)')},
+      ...(c==='US' ? [] : [{t:'대유로 환율', u:'1유로당', type:'line', L:axD(LM,dDay(c,'fxE')), dec:2, zeroBase:false, S:[
         {n:'대유로',d:d.fxE,col:'--s2'}],
-       note:'1유로당 자국 통화. 상승은 자국 통화 약세. ECB 기준환율 월평균.'}])
+       note:'1유로당 자국 통화. 상승은 자국 통화 약세. ECB 기준환율 월평균.'+dNote(dDay(c,'fxE'),'그날 기준환율(월평균 아님)')}])
     ]},
     {n:'11', t:'생산', sub:'월간 · 지수 · 계절조정', charts:[
       {t:'월간 산업생산', u:'지수', type:'line', L:LM, dec:1, S:[
@@ -451,6 +461,8 @@ function kpis(c){
     return `<div class="kpi"><span class="k">${k}</span><span class="v">${nf(v,dec)}<small>${unit}</small></span><span class="p"><span>${lastLabFn(i)}</span>${dtxt}</span></div>`;
   };
   const qL = i => M.qs[i].replace('-',' '), mL = i => M.months[i].replace('-','.');
+  // 최근일로 채운 계열은 KPI 날짜도 그 날짜로 적는다.
+  const mLd = key => i => (i === M.months.length-1 && dDay(c,key)) ? fD(dDay(c,key)) : mL(i);
   let h = '';
   if(isEuro(c)){
     h += item('실질 GDP 전기비', d.gqq, '', '%', 1, qL);
@@ -467,7 +479,7 @@ function kpis(c){
     h += item('근원물가', d.coreM, '', '%', 1, mL);
     h += item('실업률', d.unM, '', '%', 1, mL);
     h += item('정책금리', d.cbr, '', '%', 2, mL);
-    h += item('10년물 금리', d.y10, '', '%', 2, mL);
+    h += item('10년물 금리', d.y10, '', '%', 2, mLd('y10'));
     h += item('수출', d.exUSD, '', '십억$', 1, mL);
     h += item('수입', d.imUSD, '', '십억$', 1, mL);
   }

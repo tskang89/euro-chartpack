@@ -26,6 +26,7 @@ BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE / "build"))
 
 import bis                                                       # noqa: E402
+import daily                                                     # noqa: E402
 import worldbank                                                 # noqa: E402
 import comext                                                    # noqa: E402
 import ecb                                                       # noqa: E402
@@ -814,6 +815,8 @@ def build(prev: dict) -> dict:
     except ecb.EcbError as exc:
         log(f"  [실패] ECB — {exc}")
 
+    fill_daily(data, meta)
+
     # 아직 못 옮긴 계열은 이전 판에서 그대로
     carried = []
     for blk in sources.GEO:
@@ -867,8 +870,98 @@ def compare(new: dict, old: dict) -> int:
     return diffs
 
 
+def fill_daily(data: dict, meta: dict, log=log) -> None:
+    """진행 중인 달 칸을 최근일 값으로 채운다.
+
+    까닭과 '무엇을 채우고 무엇을 안 채우는가'는 daily.py 머리글에 적었다.
+    여기서는 채운 날짜를 계열별로 남기는 것이 중요하다 — 화면이 그 날짜로
+    축 이름을 바꿔 하루치 값임을 드러낸다.
+    """
+    months = meta["months"]
+    cur = months[-1]
+    since = shift_month(cur, -2) + "-01"
+
+    def put(bucket, block, name, day, value, digits):
+        """마지막 달 칸에 값과 날짜를 함께 넣는다."""
+        if day[:7] != cur:
+            log(f"    └ {block}.{name} 최근일 {day} 은 {cur} 이 아니다 — 건너뛴다.")
+            return False
+        bucket[name][-1] = half_up(value, digits)
+        data[block].setdefault("dl", {})[name] = day
+        return True
+
+    log("\n진행 중인 달을 최근일로 채운다:")
+
+    # 주가지수 — 같은 Yahoo 종가라 그대로 이어진다.
+    got = []
+    for blk, sym in list(stocks.SYMBOLS.items()) + list(sources.OECD_STOCKS.items()):
+        try:
+            day, close = daily.yahoo_last(sym)
+        except daily.DailyError as exc:
+            log(f"    └ {blk} 주가({sym}) — {exc}")
+            continue
+        if put(data[blk], blk, "stk", day, close, 1):
+            # 등락률은 직전 달 종가에서 다시 낸다.
+            prev_close = data[blk]["stk"][-2]
+            if prev_close:
+                data[blk]["stkR"][-1] = half_up(
+                    (close / prev_close - 1) * 100, 1)
+                data[blk].setdefault("dl", {})["stkR"] = day
+            got.append(f"{blk} {day[5:]}")
+    log(f"  주가   {len(got)}개  " + ", ".join(got))
+
+    # 달러지수 — 주가와 같은 Yahoo 종가.
+    for blk, sym in sources.DOLLAR_INDEX.items():
+        try:
+            day, close = daily.yahoo_last(sym)
+            put(data[blk], blk, "fxU", day, close, 2)
+            log(f"  달러지수 {blk} {day}")
+        except daily.DailyError as exc:
+            log(f"    └ {blk} 달러지수({sym}) — {exc}")
+
+    # 미국 10년물 — ^TNX. OECD 계열과 1bp 안에서 같다(daily.py 참고).
+    for blk, sym in sources.DAILY_YIELD.items():
+        try:
+            day, value = daily.yahoo_last(sym)
+            put(data[blk], blk, "y10", day, value, 2)
+            log(f"  10년물 {blk} {day} {value:.2f}")
+        except daily.DailyError as exc:
+            log(f"    └ {blk} 10년물({sym}) — {exc}")
+
+    # 대유로 환율 — 같은 ECB 기준환율.
+    for blk, cur_code in sources.ECB_FX_PER_EUR.items():
+        try:
+            day, value = daily.ecb_last(cur_code, since)
+            put(data[blk], blk, "fxE", day, value, 2)
+        except (daily.DailyError, ecb.EcbError) as exc:
+            log(f"    └ {blk} 대유로 환율 — {exc}")
+
+    # 대미달러 환율 — ECB 기준환율 교차. OECD 월평균과 거의 같다.
+    for blk, cur_code in sources.ECB_FX_PER_EUR.items():
+        try:
+            day, value = daily.ecb_cross_last(cur_code, since)
+            put(data[blk], blk, "fxU", day, value, 2)
+        except (daily.DailyError, ecb.EcbError) as exc:
+            log(f"    └ {blk} 대미달러 환율 — {exc}")
+    log(f"  환율   {sources.ECB_FX_PER_EUR} 대유로·대미달러")
+
+    # 유로 탭이 쓰는 EUR/USD·EUR/KRW 는 meta 에 있다.
+    for key, (cur_code, digits) in sources.FX_MONTHLY.items():
+        try:
+            day, value = daily.ecb_last(cur_code, since)
+        except (daily.DailyError, ecb.EcbError) as exc:
+            log(f"    └ meta.{key} — {exc}")
+            continue
+        if day[:7] != cur:
+            continue
+        mode = sources.ROUND_MODE.get(key, "binary")
+        meta[key][-1] = half_up(value, digits, mode)
+        meta.setdefault("dl", {})[key] = day
+        log(f"  meta.{key:6} {day} {meta[key][-1]}")
+
+
 def main() -> int:
-    ap = argparse.ArgumentParser(description="유로지역 경제 차트팩 빌드")
+    ap = argparse.ArgumentParser(description="주요국 경제 차트팩 빌드")
     ap.add_argument("--check", action="store_true",
                     help="쓰지 않고 지금 index.html 과 대조만 한다")
     args = ap.parse_args()
