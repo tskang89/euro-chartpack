@@ -275,7 +275,16 @@ OECD_MONTHLY = {
                           TRANSFORMATION="GY"), 1),
     "y10":   ("KEI", dict(MEASURE="IRLT",   UNIT_MEASURE="PA"), 2),
     "unM":   ("KEI", dict(MEASURE="UNEMP",  UNIT_MEASURE="PT_LF"), 1),
-    "ipM":   ("KEI", dict(MEASURE="PRVM",   UNIT_MEASURE="IX"), 1),
+    # ACTIVITY 를 반드시 박는다. KEI 는 이 조합에 BTE(건설 제외 산업)·
+    # C(제조업)·F(건설) 셋을 함께 주는데, 안 박아 두면 마지막에 온 것이
+    # 남는다. 그래서 중국·미국·한국 칸에 **건설업** 지수가 '산업생산'이라는
+    # 이름을 달고 여러 달 나갔다(중국 46.3 은 산업생산이 반토막 난 것이
+    # 아니라 2015년 대비 건설이 반토막 난 것이다). 일본만 제조업이었다.
+    #
+    # BTE 를 고른 까닭은 이 자리의 이름이 '산업생산'이기 때문이다. 제조업만
+    # 보려면 C 를 쓰는 별도 계열을 두어야 한다.
+    "ipM":   ("KEI", dict(MEASURE="PRVM",   UNIT_MEASURE="IX",
+                          ACTIVITY="BTE"), 1),
 
     # 새로 만드는 자리. 유로지역에는 대응 계열이 없거나 출처가 다르다.
     "bci":   ("KEI", dict(MEASURE="BCICP",  UNIT_MEASURE="PB"), 1),
@@ -363,7 +372,14 @@ OECD_POP_MATCH = dict(TRANSACTION="POP", UNIT_MEASURE="PS")
 #
 # 분기 합이 연간과 맞는지 확인했다 — 한국 2025년 분기 26.7+28.8+31.1+36.5 =
 # 123.1 로 연간 공표치와 정확히 같다. 미국·일본도 같았다.
-OECD_CA_KEY = "USA+CHN+JPN+KOR.WXD.CA.B..{freq}.USD_EXC."
+# 마지막 칸이 ADJUSTMENT 다. 비워 두면 계절조정판(Y)과 원계열(N)이 함께 와서
+# 받는 쪽에서 마지막 것만 남는다. 분기마다 어느 쪽이 남는지가 응답 순서에
+# 달려 있어, 한 선 안에서 두 계열이 섞였다 — 한국 2024-Q4 가 32,059 와
+# 27,592 사이에서, 중국 2023-Q4 는 40,657 과 57,732 사이에서 갈렸다(42% 차).
+#
+# N(원계열)으로 박는다. 유로지역 쪽이 Eurostat 에서 s_adj="NSA" 로 받고 있어
+# 그것과 같은 눈금이어야 탭을 넘나들며 견줄 수 있다.
+OECD_CA_KEY = "USA+CHN+JPN+KOR.WXD.CA.B..{freq}.USD_EXC.N"
 
 OECD_QUARTERLY = {
     "gqq": dict(TRANSACTION="B1GQ", TRANSFORMATION="G1", UNIT_MEASURE="PC",

@@ -41,6 +41,16 @@ BOP = "OECD.SDD.TPS,DSD_BOP@DF_BOP,1.0"
 HOUSE = "OECD.ECO.MPD,DSD_AN_HOUSE_PRICES@DF_HOUSE_PRICES,1.0"
 
 
+# 한 나라·한 기간에 값이 둘 이상 온 자리. series() 가 채우고 build.py 가
+# 로그로 내보낸다. 거기서 ops 덩어리를 타고 주간 점검까지 간다.
+#
+# 이것을 두는 까닭은 조용히 틀리는 고장을 막기 위해서다. SDMX 는 차원을
+# 덜 좁혀도 200 으로 응답하고 여러 계열을 함께 준다. 받는 쪽이 딕셔너리에
+# 넣으면 마지막 것만 남는데, 그 '마지막'은 응답 순서에 달려 있어 나라마다
+# 다른 계열이 실릴 수도 있다. 값이 있으므로 차트는 멀쩡해 보인다.
+CLASHES: list[str] = []
+
+
 class OecdError(RuntimeError):
     pass
 
@@ -104,9 +114,25 @@ def series(flow: str, key: str, start: str, end: str | None = None,
     ai, ti = order.index("REF_AREA"), order.index("TIME_PERIOD")
 
     out: dict[str, dict[str, float]] = {}
+    seen: dict[tuple[str, str], tuple] = {}
     for tup, value in decode(doc).items():
         row = dict(zip(order, tup))
         if any(row.get(k) != v for k, v in match.items()):
             continue
-        out.setdefault(row[order[ai]], {})[row[order[ti]]] = value
+        area, period = row[order[ai]], row[order[ti]]
+        # 같은 나라·같은 기간에 값이 둘 이상 오면 차원이 덜 좁혀진 것이다.
+        # 조용히 덮어쓰면 마지막에 온 것이 남는데, 그것이 무엇인지 아무도
+        # 모른다. 실제로 산업생산에서 그랬다 — ACTIVITY 를 안 박아 두어
+        # 건설업 지수가 '산업생산'이라는 이름을 달고 여러 달 나갔다.
+        old = seen.get((area, period))
+        if old is not None and out[area][period] != value:
+            differ = [k for k in order
+                      if dict(zip(order, old)).get(k) != row.get(k)
+                      and k not in (order[ai], order[ti])]
+            CLASHES.append(
+                f"{flow.split(',')[-1]} {match} — {area} {period} 에 값이 둘 "
+                f"({out[area][period]} vs {value}). 갈리는 차원: "
+                f"{'·'.join(differ) or '알 수 없음'}")
+        seen[(area, period)] = tup
+        out.setdefault(area, {})[period] = value
     return out

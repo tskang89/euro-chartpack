@@ -46,8 +46,23 @@ OUTPUT = BASE / "index.html"
 DATA_RE = re.compile(r"const DATA = (\{.*?\});\n", re.S)
 
 
+# 이번 빌드에서 어긋난 것. 페이지에 함께 실어 주간 점검이 읽게 한다.
+#
+# Actions 로그에만 찍으면 아무도 열어 보지 않는다. 한국 품목별 물가가
+# '[실패] 한국 품목별 물가 — KR' 한 줄만 남기고 차트 셋을 통째로 떨어뜨린
+# 채로 여러 날 지났다. 값이 틀리는 것이 아니라 없어지는 고장은 눈에 띄지
+# 않으므로, 기계가 세어 두어야 한다.
+TROUBLE: list[str] = []
+
+# 이 말이 든 줄만 모은다. 물려 쓴 계열도 넣는다 — 값은 있지만 새 값이
+# 아니라는 뜻이고, 그것이 며칠 이어지면 출처가 죽은 것이다.
+TROUBLE_MARKS = ("[실패]", "물려 쓴다", "[경고]")
+
+
 def log(msg: str) -> None:
     print(msg, flush=True)
+    if any(mark in msg for mark in TROUBLE_MARKS):
+        TROUBLE.append(" ".join(msg.split()))
 
 
 # ------------------------------------------------------------------ 기간 축
@@ -857,6 +872,12 @@ def build(prev: dict) -> dict:
 
     fill_daily(data, meta)
 
+    # SDMX 는 차원을 덜 좁혀도 200 으로 답하고 여러 계열을 함께 준다. 받는
+    # 쪽에서 마지막 것만 남으므로 값은 멀쩡해 보이는데 내용이 다른 것일 수
+    # 있다. oecd.series 가 그런 자리를 세어 두었으면 여기서 드러낸다.
+    for clash in oecd.CLASHES:
+        log(f"  [경고] 계열이 겹친다 — {clash}")
+
     # 아직 못 옮긴 계열은 이전 판에서 그대로
     carried = []
     for blk in sources.GEO:
@@ -1107,9 +1128,62 @@ def main() -> int:
 
     blob = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     html = TEMPLATE.read_text(encoding="utf-8").replace("__DATA__", blob)
+    html = html.replace("__OPS__", ops_blob(data))
     OUTPUT.write_text(html, encoding="utf-8")
     log(f"\nindex.html 갱신 — {len(html):,}자 (데이터 {len(blob):,}자)")
     return 0
+
+
+# ------------------------------------------------------------------ 자체 기록
+# 페이지에 사람 눈에 안 보이는 한 덩어리를 심는다. 독자에게는 쓸모가 없고
+# 주간 점검에만 쓰인다. 별도 파일로 두지 않는 까닭은 GitHub Pages 에 이미
+# 올라가는 파일 안에 있으면 받는 쪽이 주소 하나로 끝나기 때문이다.
+def fillable() -> dict[str, set[str]]:
+    """블록마다 '진행 중인 달을 채울 수 있는' 계열.
+
+    빈 칸을 셀 때 이 명단 안에서만 센다. 유로지역·중국·일본의 10년물은
+    애초에 일별을 내는 무료 출처가 없어 늘 비어 있는데(sources.DAILY_YIELD
+    의 설명), 그것을 매주 지적하면 보고가 울리는 것에 익숙해져 정작 고쳐야
+    할 날에도 넘기게 된다. 셀 것은 '채울 수 있었는데 안 채워진 것'뿐이다.
+    """
+    plan: dict[str, set[str]] = {}
+    for blk in list(stocks.SYMBOLS) + list(sources.OECD_STOCKS):
+        plan.setdefault(blk, set()).add("stk")
+    for blk in list(sources.DAILY_YIELD) + list(sources.ECOS_DAILY_YIELD):
+        plan.setdefault(blk, set()).add("y10")
+    for blk in sources.ECB_FX_PER_EUR:
+        plan.setdefault(blk, set()).update(("fxE", "fxU"))
+    for blk in sources.DOLLAR_INDEX:
+        plan.setdefault(blk, set()).add("fxU")
+    return plan
+
+
+def ops_blob(data: dict) -> str:
+    """빌드 상태를 JSON 한 줄로."""
+    months = data["meta"]["months"]
+    plan = fillable()
+    holes = {}
+    for blk, block in data.items():
+        if blk == "meta":
+            continue
+        gap = sorted(k for k in plan.get(blk, ())
+                     if k in block and block[k] and block[k][-1] is None)
+        if gap:
+            holes[blk] = gap
+    ops = {
+        "built": datetime.datetime.now(datetime.UTC)
+                         .strftime("%Y-%m-%dT%H:%MZ"),
+        "month": months[-1],
+        "asOf": data["meta"].get("asOf"),
+        "krItemMonth": data["meta"].get("krItemMonth"),
+        "filled": {blk: sorted(block.get("dl", {}))
+                   for blk, block in data.items()
+                   if blk != "meta" and block.get("dl")},
+        "holes": holes,
+        "trouble": TROUBLE,
+    }
+    # </script> 가 값 안에 들어가면 스크립트 태그가 끊긴다. '<' 를 막아 둔다.
+    return json.dumps(ops, ensure_ascii=False).replace("<", "\\u003c")
 
 
 if __name__ == "__main__":
