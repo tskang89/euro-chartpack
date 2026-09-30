@@ -149,14 +149,28 @@ KR_ITEMS = {
             ("F", KR_CPI_TABLE), ("G", KR_CPI_TABLE), ("H", KR_CPI_TABLE),
             ("I", KR_CPI_TABLE), ("J", KR_CPI_TABLE), ("K", KR_CPI_TABLE),
             ("L", KR_CPI_TABLE)],
-    # 근원 두 갈래 + 상품·서비스 세부. 한국은 근원을 둘로 낸다 —
-    # 국제 기준(식료품·에너지 제외)과 한국 전통 기준(농산물·석유류 제외)이다.
+    # 근원을 **이루는** 항목만 담는다.
+    #
+    # 처음에는 상품·서비스 전체 갈래를 넣었다가 근원 차트에 석유류(+14%)와
+    # 농축수산물이 나란히 서는 그림이 됐다. 근원은 바로 그 둘을 빼고 재는
+    # 것인데, 제목 밑에 그것들이 있으면 근원에 든 것으로 읽힌다.
+    #
+    # 한국은 근원을 둘로 낸다 — 국제 기준(DB: 식료품·에너지 제외)과 한국
+    # 전통 기준(QB: 농산물·석유류 제외). 둘을 맨 위에 기준선으로 둔다.
+    # 나머지는 DB 근원에 들어가는 서비스와 공업제품이다. 공업제품 상위
+    # 항목(212)은 가공식품·석유류를 품고 있어 넣지 않고 세부만 싣는다.
     "itC": [("DB", KR_CPI_SPECIAL), ("QB", KR_CPI_SPECIAL),
-            ("21", KR_CPI_SPECIAL), ("211", KR_CPI_SPECIAL),
-            ("212", KR_CPI_SPECIAL), ("2125", KR_CPI_SPECIAL),
-            ("213", KR_CPI_SPECIAL),
             ("22", KR_CPI_SPECIAL), ("221", KR_CPI_SPECIAL),
             ("222", KR_CPI_SPECIAL), ("223", KR_CPI_SPECIAL),
+            ("2231", KR_CPI_SPECIAL), ("2239", KR_CPI_SPECIAL),
+            ("2122", KR_CPI_SPECIAL), ("2123", KR_CPI_SPECIAL),
+            ("2127", KR_CPI_SPECIAL), ("2129", KR_CPI_SPECIAL)],
+    # 근원에서 **빠지는** 변동성 항목. 한국 물가 논의는 늘 이쪽이 중심이라
+    # 버리지 않고 따로 싣는다. 근원과 섞지만 않으면 된다.
+    "itX": [("10", KR_CPI_SPECIAL), ("211", KR_CPI_SPECIAL),
+            ("2111", KR_CPI_SPECIAL), ("2112", KR_CPI_SPECIAL),
+            ("2113", KR_CPI_SPECIAL), ("2121", KR_CPI_SPECIAL),
+            ("2125", KR_CPI_SPECIAL), ("213", KR_CPI_SPECIAL),
             ("110", KR_CPI_SPECIAL)],
 }
 KR_ITEM_BLOCK = "KR"
