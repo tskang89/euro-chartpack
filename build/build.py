@@ -946,7 +946,13 @@ def fill_kr_items(data: dict, meta: dict, log=log) -> None:
                 continue
             rate = ecos.yoy(idx, base)
             values.append(None if rate is None else half_up(rate, 1))
-        data[blk][key] = values
+        # setdefault 로 받는다. sources.GEO 에는 유로지역 아홉 곳만 있고 한국
+        # 칸은 해외 구획(아래쪽)에서 만들어지는데, 이 함수는 그보다 먼저
+        # 돈다. data[blk] 로 바로 쓰면 KeyError 가 나고, 바깥의 except 가
+        # KeyError 를 잡아 '[실패] 한국 품목별 물가' 한 줄만 남긴 채 품목
+        # 차트 셋이 통째로 빠진다 — 값이 틀리는 것이 아니라 없어지므로
+        # 화면을 열어 보지 않으면 모른다. 실제로 그렇게 한 번 나갔다.
+        data.setdefault(blk, {})[key] = values
         have = sum(1 for v in values if v is not None)
         log(f"  품목 KR.{key:4} ECOS {sources.KR_CPI_TABLE}   "
             f"{meta['krItemMonth']} 기준 {have}/{len(values)}항목")
@@ -1009,6 +1015,20 @@ def fill_daily(data: dict, meta: dict, log=log) -> None:
             log(f"  10년물 {blk} {day} {value:.2f}")
         except daily.DailyError as exc:
             log(f"    └ {blk} 10년물({sym}) — {exc}")
+
+    # 한국 10년물 — ECOS 시장금리(일별)의 국고채 10년. 야후에 티커가 없어
+    # 출처가 여기만 다르다. OECD 월간과 같은 계열이다(sources.py 참고).
+    if ecos.have_key():
+        for blk, (table, item) in sources.ECOS_DAILY_YIELD.items():
+            try:
+                day, value = daily.ecos_last(table, item, since)
+                if put(data[blk], blk, "y10", day, value, 2):
+                    log(f"  10년물 {blk} {day} {value:.2f}")
+            except (daily.DailyError, ecos.EcosError,
+                    ValueError, KeyError) as exc:
+                log(f"    └ {blk} 10년물(ECOS) — {exc}")
+    else:
+        log("    └ KR 10년물 — ECOS_API_KEY 가 없어 건너뛴다")
 
     # 대유로 환율 — 같은 ECB 기준환율.
     for blk, cur_code in sources.ECB_FX_PER_EUR.items():

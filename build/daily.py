@@ -33,6 +33,7 @@ import time
 import requests
 
 import ecb
+import ecos
 
 CHART = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
 TIMEOUT = 30
@@ -114,6 +115,21 @@ def ecb_last(currency: str, since: str) -> tuple[str, float]:
         raise DailyError(f"EXR {currency}: 값이 없다")
     day = max(rows)
     return day, rows[day]
+
+
+def ecos_last(table: str, item: str, since: str) -> tuple[str, float]:
+    """한국은행 ECOS 일별 계열의 최근값. (YYYY-MM-DD, 값).
+
+    한국 국채는 야후에 티커가 없어 여기만 출처가 다르다. since 는 다른
+    함수와 같은 'YYYY-MM-DD' 꼴로 받고, ECOS 표기(YYYYMMDD)로 바꿔 보낸다.
+    """
+    start = since.replace("-", "")
+    end = datetime.date.today().strftime("%Y%m%d")
+    rows = ecos.series(table, item, "D", start, end)
+    if not rows:
+        raise DailyError(f"ECOS {table}/{item}: 값이 없다")
+    day = max(rows)
+    return f"{day[:4]}-{day[4:6]}-{day[6:]}", rows[day]
 
 
 def ecb_cross_last(currency: str, since: str) -> tuple[str, float]:
