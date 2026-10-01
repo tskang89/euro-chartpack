@@ -40,6 +40,25 @@ MONTHLY = {
     "rt":    ("sts_trtu_m", dict(indic_bt="VOL_SLS", nace_r2="G47",
                                  s_adj="SCA", unit="I21")),
 
+    # 소매판매 항목별. 사무소 월중동향이 '연료는 올랐으나 식료품이 내렸다'
+    # 식으로 쓰는 둘이다. 비식료품은 Eurostat 코드가 따로 없다.
+    "rtF":   ("sts_trtu_m", dict(indic_bt="VOL_SLS", nace_r2="G47_FOOD",
+                                 s_adj="SCA", unit="I21")),
+    "rtE":   ("sts_trtu_m", dict(indic_bt="VOL_SLS", nace_r2="G473",
+                                 s_adj="SCA", unit="I21")),
+
+    # 산업생산 항목별(주요 산업군, MIG). 전체 지수가 멈춰 있어도 자본재가
+    # 빠지고 비내구재가 받치는 식의 안쪽 움직임이 보인다. 월중동향이
+    # 산업생산을 쓸 때 늘 이 넷으로 쪼갠다.
+    "ipCap": ("sts_inpr_m", dict(indic_bt="PRD", nace_r2="MIG_CAG",
+                                 s_adj="SCA", unit="I21")),
+    "ipInt": ("sts_inpr_m", dict(indic_bt="PRD", nace_r2="MIG_ING",
+                                 s_adj="SCA", unit="I21")),
+    "ipDur": ("sts_inpr_m", dict(indic_bt="PRD", nace_r2="MIG_DCOG",
+                                 s_adj="SCA", unit="I21")),
+    "ipNdr": ("sts_inpr_m", dict(indic_bt="PRD", nace_r2="MIG_NDCOG",
+                                 s_adj="SCA", unit="I21")),
+
     # EC 기업·소비자 서베이
     "esi":   ("ei_bssi_m_r2", dict(indic="BS-ESI-I",     s_adj="SA")),
     "ici":   ("ei_bssi_m_r2", dict(indic="BS-ICI-BAL",   s_adj="SA")),
@@ -197,7 +216,9 @@ CA_PARTNER = {"EA21": "EXT_EA21"}
 CA_DEFAULT = "WRL_REST"
 
 # ------------------------------------------------------------------ ECB
-FX_MONTHLY = {"fxUsd": ("USD", 4), "fxKrw": ("KRW", 2)}
+# 엔/유로를 더한다. 월중동향이 달러/유로와 나란히 놓고 보는 짝이다.
+FX_MONTHLY = {"fxUsd": ("USD", 4), "fxKrw": ("KRW", 2),
+              "fxJpy": ("JPY", 2)}
 FX_ANNUAL = {"fxA": "USD"}
 POLICY = {"dfr": "D.U2.EUR.4F.KR.DFR.LEV", "mro": "D.U2.EUR.4F.KR.MRR_FR.LEV"}
 
@@ -205,7 +226,7 @@ POLICY = {"dfr": "D.U2.EUR.4F.KR.DFR.LEV", "mro": "D.U2.EUR.4F.KR.MRR_FR.LEV"}
 #   binary  — 부동소수점이 실제로 담은 값. Eurostat 계열이 그렇다(2.405 는 2.40).
 #   decimal — 글자 그대로의 값. ECB 환율이 그렇다(1.05785 는 1.0579).
 # 원본 차트팩이 그렇게 만들어져 있어 그대로 따른다. 섞으면 마지막 자리가 틀어진다.
-ROUND_MODE = {"fxUsd": "decimal", "fxKrw": "decimal"}
+ROUND_MODE = {"fxUsd": "decimal", "fxKrw": "decimal", "fxJpy": "decimal"}
 
 
 # ------------------------------------------------------------------ 이민

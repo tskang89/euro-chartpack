@@ -326,13 +326,25 @@ function euroSections(c){
       {t:'EUR/USD', u:'달러 / 유로', type:'line', L:axD(LM,dDay('__meta__','fxUsd')), dec:4, zeroBase:false, S:[{n:'EUR/USD',d:M.fxUsd,col:'--s1'}],
        note:'1유로당 달러. 상승은 유로 강세.'+dNote(dDay('__meta__','fxUsd'),'그날 기준환율(월평균 아님)')},
       {t:'EUR/KRW', u:'원 / 유로', type:'line', L:axD(LM,dDay('__meta__','fxKrw')), dec:2, zeroBase:false, S:[{n:'EUR/KRW',d:M.fxKrw,col:'--s2'}],
-       note:'1유로당 원. 상승은 유로 대비 원화 약세. 유로화는 공통 통화라 모든 탭에서 같은 값.'+dNote(dDay('__meta__','fxKrw'),'그날 기준환율(월평균 아님)')}
+       note:'1유로당 원. 상승은 유로 대비 원화 약세. 유로화는 공통 통화라 모든 탭에서 같은 값.'+dNote(dDay('__meta__','fxKrw'),'그날 기준환율(월평균 아님)')},
+      ...(M.fxJpy ? [{t:'EUR/JPY', u:'엔 / 유로', type:'line', L:axD(LM,dDay('__meta__','fxJpy')), dec:2, zeroBase:false, S:[{n:'EUR/JPY',d:M.fxJpy,col:'--s3'}],
+       note:'1유로당 엔. 상승은 유로 대비 엔화 약세. 달러/유로와 나란히 두고 보면 유로가 올랐을 때 그것이 유로 강세인지 달러 약세인지 갈린다.'+dNote(dDay('__meta__','fxJpy'),'그날 기준환율(월평균 아님)')}] : [])
     ]},
     {n:'13', t:'생산', sub:'월간 · 2021=100 · 계절조정', charts:[
       {t:'산업생산 · 전체', u:'지수(2021=100)', type:'line', L:LM, dec:1, zeroBase:false, S:[
         {n:'산업생산 전체',d:d.ipT,col:'--s1'},
         {n:'_2021=100',d:LM.map(()=>100),col:'--ref',ref:true}],
        note:'광업·제조업·전기가스(NACE B–D). 점선은 2021년 평균 수준(100).'},
+      /* 항목별. 전체 지수가 멈춰 있어도 자본재가 빠지고 비내구재가 받치는
+         식의 안쪽 움직임이 보인다. 사무소 월중동향이 산업생산을 쓸 때 늘
+         이 넷으로 쪼개므로, 보고서를 쓰면서 따로 받던 것을 여기 둔다. */
+      ...(d.ipCap ? [{t:'산업생산 · 주요 산업군별', u:'지수(2021=100)', type:'line', L:LM, dec:1, zeroBase:false, S:[
+        {n:'자본재',d:d.ipCap,col:'--s1'},
+        {n:'중간재',d:d.ipInt,col:'--s2'},
+        {n:'내구소비재',d:d.ipDur,col:'--s3'},
+        {n:'비내구소비재',d:d.ipNdr,col:'--s4'},
+        {n:'_2021=100',d:LM.map(()=>100),col:'--ref',ref:true}],
+       note:'주요 산업군(MIG) 분류. 자본재는 설비투자, 중간재는 공정 수요, 소비재는 가계 수요를 비춘다. 넷을 더해도 전체 지수가 되지는 않는다 — 가중치가 다르고 에너지가 따로 있다.'}] : []),
       {t:'제조업과 서비스업 생산', u:'지수(2021=100)', type:'line', L:LM, dec:1, zeroBase:false, S:[
         {n:'제조업',d:d.ipM,col:'--s2'},
         {n:'서비스업',d:d.ipS,col:'--s3'},
@@ -378,8 +390,10 @@ function euroSections(c){
     ]}] : []),
     {n:'15', t:'소매판매 · 소비자 신뢰', sub:'월간 · 계절조정', charts:[
       {t:'소매판매', u:'물량지수(2021=100)', type:'line', L:LM, dec:1, zeroBase:false, S:[
-        {n:'소매판매',d:d.rt,col:'--s1'},{n:'_2021=100',d:LM.map(()=>100),col:'--ref',ref:true}],
-       note:'자동차 제외 소매업(NACE G47) 판매 물량, 계절·영업일수 조정. 연료 소매는 포함된다. 자료: Eurostat sts_trtu_m.'},
+        {n:'전체',d:d.rt,col:'--s1'},
+        ...(d.rtF ? [{n:'식료품',d:d.rtF,col:'--s2'},{n:'연료',d:d.rtE,col:'--s3'}] : []),
+        {n:'_2021=100',d:LM.map(()=>100),col:'--ref',ref:true}],
+       note:'자동차 제외 소매업(NACE G47) 판매 물량, 계절·영업일수 조정. 연료 소매는 전체에 포함된다. 식료품과 연료는 성격이 달라 따로 움직인다 — 전체가 보합이어도 둘이 반대로 가는 달이 있다. 자료: Eurostat sts_trtu_m.'},
       {t:'소비자 신뢰지수', u:'응답 균형(%p)', type:'line', L:LM, dec:1, S:[{n:'소비자 신뢰지수',d:d.cc,col:'--s2'}],
        note:'EC 소비자 서베이. 0보다 낮으면 비관적 응답 우위.'}
     ]},
