@@ -291,6 +291,10 @@ def build(prev: dict) -> dict:
             fill_kr_items(data, meta)
         except (ecos.EcosError, KeyError, ValueError) as exc:
             log(f"  [실패] 한국 품목별 물가 — {exc}")
+        try:
+            fill_kr_trade(data, meta)
+        except (ecos.EcosError, KeyError, ValueError) as exc:
+            log(f"  [실패] 대한국 교역 — {exc}")
     else:
         log("  한국 품목별 물가 — ECOS_API_KEY 가 없어 건너뛴다")
 
@@ -889,7 +893,11 @@ def build(prev: dict) -> dict:
         log(f"  이전 판에서 물려 온 계열: {sorted(set(carried))}")
 
     # 화면 코드가 기대하는 계열이 빠지면 차트가 빈 칸으로 뜬다. 미리 잡는다.
-    expected = set(prev["EZ"])
+    # dl 은 차트 계열이 아니라 '진행 중인 달을 언제 값으로 채웠나'를 적어 두는
+    # 기록이다. 이 검사는 fill_daily 보다 먼저 도므로 그때는 당연히 비어 있는데,
+    # 빠진 계열로 보고 **전날 날짜를 물려받는다**. 그러면 오늘 채우지 못한
+    # 계열의 축에 어제 날짜가 남아, 없는 값을 있는 것처럼 적게 된다.
+    expected = set(prev["EZ"]) - {"dl"}
     for blk in sources.GEO:          # 유로 블록만. 해외 블록은 계열 구성이 다르다.
         missing = expected - set(data[blk])
         if missing:
@@ -977,6 +985,34 @@ def fill_kr_items(data: dict, meta: dict, log=log) -> None:
         have = sum(1 for v in values if v is not None)
         log(f"  품목 KR.{key:4} ECOS {sources.KR_CPI_TABLE}   "
             f"{meta['krItemMonth']} 기준 {have}/{len(values)}항목")
+
+
+def fill_kr_trade(data: dict, meta: dict) -> None:
+    """미국·중국·일본의 대한국 수출입을 ECOS 에서 거울상으로 받는다.
+
+    한국이 신고한 값이므로 방향이 뒤집힌다 — 한국의 대미 '수입'이 미국의
+    대한국 '수출'이다. 유로지역 차트는 유럽이 신고한 값이라 같은 교역도
+    금액이 어긋나는데, 그것은 각주에 적는다.
+
+    한 나라가 실패해도 나머지는 남긴다. 셋이 한 묶음일 이유가 없다.
+    """
+    years = meta["years"]
+    for blk, code in sources.KR_TRADE_AREAS.items():
+        kr: dict[str, list] = {}
+        try:
+            for key, item in sources.KR_TRADE_FLOW.items():
+                rows = ecos.series(sources.KR_TRADE_TABLE, f"{item}/{code}",
+                                   "A", years[0], years[-1])
+                # 천달러 -> 백만달러. 화면에서 다시 1e3 으로 나눠 십억이 된다.
+                kr[key] = [None if rows.get(y) is None
+                           else half_up(rows[y] / 1e3, 1) for y in years]
+        except Exception as exc:                      # noqa: BLE001
+            log(f"    └ {blk} 대한국 교역 — {type(exc).__name__}: {exc}")
+            continue
+        data.setdefault(blk, {})["kr"] = kr
+        have = sum(1 for v in kr["ex"] if v is not None)
+        log(f"  대한국 {blk}  ECOS {sources.KR_TRADE_TABLE}   "
+            f"{years[0]}~{years[-1]} {have}/{len(years)}개년")
 
 
 def fill_daily(data: dict, meta: dict, log=log) -> None:

@@ -346,6 +346,7 @@ function globalSections(c){
   const d = DATA[c], gen = C[c].gen;
   const gap = s => s===null ? ' 해당 계열이 OECD 에 없어 비워 둔다.' : '';
   const noCPI = c==='JP', noUN = c==='CN', noBCI = c==='JP', noCore = c==='CN';
+  const nm = C[c].ko;
   return [
     {n:'1', t:'경제 규모', sub:'연간', charts:[
       {t:'명목 GDP', u:'조 달러', type:'bar', L:LY, dec:2, S:[
@@ -395,7 +396,14 @@ function globalSections(c){
         {n:'_0',d:LQ.map(()=>0),col:'--ref',ref:true}],
        note:'분기 금액을 그 해 연간 명목 GDP 의 1/4 로 나눈 연율 기준. 연간 비율과 같은 눈금에서 읽힌다.'}
     ]},
-    {n:'5', t:'재정', sub:'연간 · 일반정부 · GDP 대비', charts:[
+    /* 대한국 교역. 한국 탭에는 뜻이 없고, 받지 못한 날은 빈 탭이 되므로
+       d.kr 이 있을 때만 끼운다. 유로지역 탭의 같은 자리(5번)에 맞춘다. */
+    ...(d.kr ? [{n:'5', t:'대 한국 교역', sub:'연간 · '+YR, charts:[
+      {t:nm+'의 대한국 수출입', u:'십억 달러', type:'bar', L:LY, dec:1, wide:true, balance:true, S:[
+        {n:'대한국 수출',d:div(d.kr.ex,1e3),col:'--s1'},{n:'대한국 수입',d:div(d.kr.im,1e3),col:'--s2'}],
+       note:'한국은행 ECOS 국가별 수출입(관세청 통관 기준)을 뒤집어 읽은 것이다 — 한국의 대'+nm+' 수출이 곧 '+nm+'의 대한국 수입이다. 미국·중국·일본의 교역통계를 한 군데서 받을 곳이 없어 한국 측 통계를 썼다. 유로지역 탭은 유럽이 신고한 값이라 같은 교역이라도 금액이 어긋난다(수출은 FOB, 수입은 CIF 로 잡혀 운임·보험이 한쪽에만 붙는다).'}
+    ]}] : []),
+    {n:'6', t:'재정', sub:'연간 · 일반정부 · GDP 대비', charts:[
       {t:'정부부채 / GDP', u:'% GDP', type:'bar', L:LY, dec:1, S:[
         {n:'정부부채',d:d.debt,col:'--s1'}],
        note:'일반정부 총부채. 자료: IMF World Economic Outlook. 유로 탭은 Eurostat EDP 기준이라 출처가 다르다.'},
@@ -404,7 +412,7 @@ function globalSections(c){
         {n:'_0',d:LY.map(()=>0),col:'--ref',ref:true,kind:'line'}],
        note:'일반정부 순대출(+)/순차입(−). 자료: IMF World Economic Outlook.'}
     ]},
-    {n:'6', t:'소비자물가', sub:'월간 · % 전년동월비', charts:[
+    {n:'7', t:'소비자물가', sub:'월간 · % 전년동월비', charts:[
       {t:'연간 소비자물가 상승률', u:'% 전년비', type:'bar', L:LY, dec:1, S:[
         {n:'헤드라인',d:d.cpiA,col:'--s1'},
         {n:'근원',d:d.coreA,col:'--s2'}],
@@ -438,7 +446,7 @@ function globalSections(c){
        S:[{n:'상승률',d:d.itX,col:'--s1'}],
        note:'근원(식료품·에너지 제외)에서 빠지는 변동성 항목이다. 한국 물가 논의는 늘 이쪽이 중심이라 따로 실었다. 맨 아래 생활물가지수는 자주 사는 품목으로 따로 만든 지수로, 근원과는 다른 갈래다. 자료: 한국은행 ECOS 901Y010.'}
     ]}] : []),
-    {n:'7', t:'실업률', sub:'연간 · 월간', charts:[
+    {n:'8', t:'실업률', sub:'연간 · 월간', charts:[
       {t:'연간 실업률', u:'%', type:'line', L:LY, dec:1, points:true, S:[
         {n:'실업률',d:d.unA,col:'--s1'}],
        note:'연평균. 자료: OECD.'+(noUN?' 중국은 비교 가능한 계열이 없어 비워 두었다.':'')},
@@ -446,7 +454,7 @@ function globalSections(c){
         {n:'실업률',d:d.unM,col:'--s1'}],
        note:'OECD 표준 정의(15~64세 노동력 대비).'+(noUN?' 중국은 OECD 에 비교 가능한 계열이 없어 비워 두었다. 중국은 도시조사실업률을 따로 발표하나 기준이 다르다.':'')}
     ]},
-    {n:'8', t:'주가', sub:'월간 · 월말 종가', charts:[
+    {n:'9', t:'주가', sub:'월간 · 월말 종가', charts:[
       {t:C[c].idx+' 지수', u:'포인트', type:'line', L:axD(LMS,dDay(c,'stk')), dec:0, zeroBase:false, S:[
         {n:C[c].idx,d:d.stk,col:'--s1'}],
        note:'월말 종가(Yahoo Finance 기준).'+(M.stkNote?' '+M.stkNote+'.':'')+dNote(dDay(c,'stk'),'그날 종가(월 진행 중)')},
@@ -454,13 +462,13 @@ function globalSections(c){
         {n:'월간 상승률',d:d.stkR,col:'--s2'}],
        note:'월말 종가 기준 전월 대비 등락률.'+(M.stkNote?' '+M.stkNote+'.':'')+dNote(dDay(c,'stkR'),'그날까지의 등락률')}
     ]},
-    {n:'9', t:'금리', sub:'월간 · 정책금리 · 10년물 국채', charts:[
+    {n:'10', t:'금리', sub:'월간 · 정책금리 · 10년물 국채', charts:[
       {t:'정책금리와 10년물 국채금리', u:'%', type:'line', L:axD(LM,dDay(c,'y10')), dec:2, S:[
         {n:'정책금리',d:d.cbr,col:'--s4'},
         {n:'10년물 국채',d:d.y10,col:'--s1'}],
        note:'정책금리는 중앙은행이 정한 금리(자료: BIS), 10년물은 국채수익률 월평균(자료: OECD).'+(c==='US'?' 연준은 폭 25bp 의 목표범위로 정하는데, 여기서는 그 상단을 적는다(예: 3.50~3.75% 이면 3.75%).':'')+(c==='CN'?' 중국 정책금리는 대출우대금리(LPR) 1년 기준. LPR은 은행이 우량 차주에게 매기는 대출금리여서 무위험 국채수익률보다 높은 것이 정상이며, 두 선의 상하 관계를 다른 나라처럼 읽으면 안 된다. 견줄 만한 단기 정책금리는 7일 역레포금리다.':'')+dNote(dDay(c,'y10'),'10년물의 그날 종가(월평균 아님)')}
     ]},
-    {n:'10', t:'환율', sub:'월간 · 대미달러 · 대유로', charts:[
+    {n:'11', t:'환율', sub:'월간 · 대미달러 · 대유로', charts:[
       {t: c==='US' ? '달러지수 (ICE DXY)' : '대미달러 환율',
        u: c==='US' ? '지수' : '1달러당', type:'line', L:axD(LM,dDay(c,'fxU')), dec:2, zeroBase:false, S:[
         {n: c==='US' ? '달러지수' : '대미달러', d:d.fxU, col:'--s1'}],
@@ -472,17 +480,17 @@ function globalSections(c){
         {n:'대유로',d:d.fxE,col:'--s2'}],
        note:'1유로당 자국 통화. 상승은 자국 통화 약세. ECB 기준환율 월평균.'+dNote(dDay(c,'fxE'),'그날 기준환율(월평균 아님)')}])
     ]},
-    {n:'11', t:'생산', sub:'월간 · 지수 · 계절조정', charts:[
+    {n:'12', t:'생산', sub:'월간 · 지수 · 계절조정', charts:[
       {t:'월간 산업생산', u:'지수', type:'line', L:LM, dec:1, S:[
         {n:'산업생산',d:d.ipM,col:'--s1'}],
        note:'OECD 산업생산 물량지수. 기준연도가 유로지역 차트(2021=100)와 다를 수 있어 수준을 그대로 견주지 않는다.'}
     ]},
-    {n:'12', t:'주택가격', sub:'연간', charts:[
+    {n:'13', t:'주택가격', sub:'연간', charts:[
       {t:'주택가격 상승률', u:'% 전년비', type:'bar', L:LY, dec:1, S:[
         {n:'주택가격',d:d.hpi,col:'--s1'}],
        note:'명목 주택가격지수의 전년비 상승률. 자료: OECD 주택가격 지표.'}
     ]},
-    {n:'13', t:'경기선행지수 · 심리', sub:'월간 · CLI 100 = 장기추세', charts:[
+    {n:'14', t:'경기선행지수 · 심리', sub:'월간 · CLI 100 = 장기추세', charts:[
       {t:'경기선행지수(CLI)', u:'지수', type:'line', L:LM, dec:1, S:[
         {n:'CLI',d:d.cli,col:'--s1'},
         {n:'_장기추세 100',d:LM.map(()=>100),col:'--ref',ref:true}],
@@ -495,7 +503,20 @@ function globalSections(c){
   ];
 }
 
-function sections(c){ return isEuro(c) ? euroSections(c) : globalSections(c); }
+/* 구획 번호는 여기서 순서대로 다시 매긴다.
+ *
+ * 예전에는 각 구획 정의에 n:'5' 처럼 박아 두었다. 그러면 조건부 구획이
+ * 하나라도 있을 때 번호에 구멍이 난다 — 한국 탭에는 '대 한국 교역'이
+ * 없으므로 04 다음이 06 이 되어 빠뜨린 것처럼 보인다. 구획을 하나 끼울
+ * 때마다 뒤를 전부 고쳐야 하는 문제도 있었다(실제로 겹쳐서 10번이 둘이
+ * 된 적이 있다).
+ *
+ * 정의에 적힌 n 은 이제 쓰지 않는다. 화면에 보이는 번호와 앵커 id 는
+ * 그 탭에서 실제로 그려지는 차례를 따른다. */
+function sections(c){
+  return (isEuro(c) ? euroSections(c) : globalSections(c))
+    .map((sec, i) => ({...sec, n: String(i + 1)}));
+}
 
 let charts = [];
 function kpis(c){
