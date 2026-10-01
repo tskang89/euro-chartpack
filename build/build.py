@@ -874,6 +874,13 @@ def build(prev: dict) -> dict:
     except ecb.EcbError as exc:
         log(f"  [실패] ECB — {exc}")
 
+    # 은행·신용. 다른 구획과 출처가 겹치지 않아 어디에 두어도 되지만,
+    # 월간 축이 다 찬 뒤에 두어야 축 길이가 맞는다.
+    try:
+        fill_bank(data, meta)
+    except Exception as exc:                           # noqa: BLE001
+        log(f"  [실패] 은행·신용 — {type(exc).__name__}: {exc}")
+
     fill_daily(data, meta)
 
     # SDMX 는 차원을 덜 좁혀도 200 으로 답하고 여러 계열을 함께 준다. 받는
@@ -985,6 +992,38 @@ def fill_kr_items(data: dict, meta: dict, log=log) -> None:
         have = sum(1 for v in values if v is not None)
         log(f"  품목 KR.{key:4} ECOS {sources.KR_CPI_TABLE}   "
             f"{meta['krItemMonth']} 기준 {have}/{len(values)}항목")
+
+
+def fill_bank(data: dict, meta: dict) -> None:
+    """은행 금리와 대출 증가율. ECB Data Portal(MIR·BSI).
+
+    한 계열이 실패해도 나머지는 남긴다. 금리 넷 가운데 하나가 빠진다고
+    탭 전체를 잃을 이유가 없다.
+    """
+    months = meta["months"]
+
+    def put(blk: str, name: str, flow: str, key: str, digits: int) -> bool:
+        try:
+            rows = ecb.series(flow, key, months[0])
+        except (ecb.EcbError, KeyError, ValueError) as exc:
+            log(f"    └ {blk}.{name} — {str(exc)[:70]}")
+            return False
+        data.setdefault(blk, {})[name] = [
+            None if rows.get(m) is None else half_up(rows[m], digits)
+            for m in months]
+        return True
+
+    got = []
+    for blk, geo in sources.ECB_GEO.items():
+        n = sum(put(blk, name, "MIR", key.format(geo=geo), 2)
+                for name, key in sources.ECB_MIR.items())
+        if n:
+            got.append(f"{blk} {n}/{len(sources.ECB_MIR)}")
+    log(f"  은행금리 MIR  ECB  " + ", ".join(got))
+
+    n = sum(put("EZ", name, "BSI", key, 1)
+            for name, key in sources.ECB_BSI_EA.items())
+    log(f"  대출증가율 BSI ECB  유로지역 {n}/{len(sources.ECB_BSI_EA)}")
 
 
 def fill_kr_trade(data: dict, meta: dict) -> None:
