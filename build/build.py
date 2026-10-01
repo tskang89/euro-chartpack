@@ -239,6 +239,24 @@ def build(prev: dict) -> dict:
                 for a, b in zip(raw["y10"][blk], de)]
         log("  파생  spr     (10년물 − 독일 10년물, bp)")
 
+        # 주변국 둘(포르투갈·그리스)은 탭이 없으므로 meta 에 선만 담는다.
+        # 탭을 만들려면 나머지 지표를 다 받아야 하는데 쓰는 곳은 이 차트
+        # 하나뿐이다.
+        try:
+            got = eurostat.series("irt_lt_mcby_m",
+                                  list(sources.PERIPHERY.values()),
+                                  since=months[0], int_rt="MCBY")
+            for key, geo in sources.PERIPHERY.items():
+                rows = got.get(geo, {})
+                meta[key] = [
+                    None if (rows.get(m) is None or b is None)
+                    else half_up((rows[m] - b) * 100, 0)
+                    for m, b in zip(months, de)]
+                have = sum(1 for v in meta[key] if v is not None)
+                log(f"  파생  {key:7} ({geo} − 독일, bp) 값 {have}/{len(months)}")
+        except (eurostat.EurostatError, KeyError, ValueError) as exc:
+            log(f"  [실패] 주변국 스프레드 — {exc}")
+
     # --- 품목별 소비자물가 (가로 막대) ---
     item_month = meta[sources.ITEM_MONTH_KEY]
     codes = sorted({c for v in sources.ITEMS.values() for c in v})
@@ -887,6 +905,11 @@ def build(prev: dict) -> dict:
     # SDMX 는 차원을 덜 좁혀도 200 으로 답하고 여러 계열을 함께 준다. 받는
     # 쪽에서 마지막 것만 남으므로 값은 멀쩡해 보이는데 내용이 다른 것일 수
     # 있다. oecd.series 가 그런 자리를 세어 두었으면 여기서 드러낸다.
+    try:
+        fill_hicp_ctrb(data, meta)
+    except Exception as exc:                           # noqa: BLE001
+        log(f"  [실패] HICP 기여도 — {type(exc).__name__}: {exc}")
+
     check_values(data, meta)
 
     for clash in oecd.CLASHES:
@@ -1005,6 +1028,57 @@ def fill_kr_items(data: dict, meta: dict, log=log) -> None:
         have = sum(1 for v in values if v is not None)
         log(f"  품목 KR.{key:4} ECOS {sources.KR_CPI_TABLE}   "
             f"{meta['krItemMonth']} 기준 {have}/{len(values)}항목")
+
+
+def fill_hicp_ctrb(data: dict, meta: dict) -> None:
+    """HICP 품목별 기여도를 직접 낸다.
+
+    기여도 = 그 품목의 전년동월비 × 가중치/1000.
+
+    Eurostat 공식 계열(prc_hicp_ctrb)이 2025-12 에서 멈춰 있어 쓸 수 없다.
+    공식 산식은 전년 지수비까지 쓰므로 소수 둘째 자리에서 조금 다를 수
+    있고, 그래서 차트 각주에 '자체 계산'이라고 밝힌다.
+
+    가중치는 해마다 바뀐다. 그 달이 속한 해의 것을 쓰되, 아직 공표되지
+    않은 해는 가장 최근 해의 것으로 잇는다 — 연초에는 늘 그렇다.
+    """
+    months = meta["months"]
+    geos = list(sources.GEO.values())
+    back = {v: k for k, v in sources.GEO.items()}
+
+    for name, code in sources.HICP_CTRB.items():
+        try:
+            rate = eurostat.series("prc_hicp_minr", geos, since=months[0],
+                                   coicop18=code, unit="RCH_A")
+            # 가중치는 유로지역을 EA21 로 내지 않는다(EA20 으로 낸다).
+            # 상승률 쪽은 EA21 이 되므로 둘이 어긋난다 — 그래서 대체 코드를
+            # 함께 받아 두고, 비어 있으면 그쪽을 쓴다.
+            weight = eurostat.series("prc_hicp_inw", geos + sources.HICP_W_ALT,
+                                     since=months[0][:4], coicop=code)
+        except (eurostat.EurostatError, KeyError, ValueError) as exc:
+            log(f"    └ 기여도 {code} — {str(exc)[:70]}")
+            continue
+        for geo in geos:
+            rows = rate.get(geo, {})
+            w = weight.get(geo) or {}
+            if not w:
+                for alt in sources.HICP_W_ALT:
+                    if weight.get(alt):
+                        w = weight[alt]
+                        break
+            newest = max(w) if w else None
+            out = []
+            for m in months:
+                r = rows.get(m)
+                year = m[:4]
+                wt = w.get(year) or (w.get(newest) if newest else None)
+                out.append(None if (r is None or wt is None)
+                           else half_up(r * wt / 1000, 2))
+            data.setdefault(back[geo], {})[name] = out
+        have = sum(1 for g in geos for v in data[back[g]].get(name, [])
+                   if v is not None)
+        log(f"  기여도 {name:9} prc_hicp_minr×inw  값 {have}/"
+            f"{len(geos) * len(months)}")
 
 
 def check_values(data: dict, meta: dict) -> None:
