@@ -19,6 +19,7 @@ import datetime
 import json
 import os
 import re
+import statistics
 import sys
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
@@ -886,6 +887,8 @@ def build(prev: dict) -> dict:
     # SDMX 는 차원을 덜 좁혀도 200 으로 답하고 여러 계열을 함께 준다. 받는
     # 쪽에서 마지막 것만 남으므로 값은 멀쩡해 보이는데 내용이 다른 것일 수
     # 있다. oecd.series 가 그런 자리를 세어 두었으면 여기서 드러낸다.
+    check_values(data, meta)
+
     for clash in oecd.CLASHES:
         log(f"  [경고] 계열이 겹친다 — {clash}")
 
@@ -904,13 +907,23 @@ def build(prev: dict) -> dict:
     # 기록이다. 이 검사는 fill_daily 보다 먼저 도므로 그때는 당연히 비어 있는데,
     # 빠진 계열로 보고 **전날 날짜를 물려받는다**. 그러면 오늘 채우지 못한
     # 계열의 축에 어제 날짜가 남아, 없는 값을 있는 것처럼 적게 된다.
-    expected = set(prev["EZ"]) - {"dl"}
+    # 유로지역 탭에만 있는 계열은 빼고 센다. 대출 증가율과 대출서베이는
+    # ECB 가 유로지역 전체로만 공표해 회원국 칸에 애초에 들어갈 수 없다.
+    # 빼지 않으면 '회원국에 빠진 계열'로 잡혀 이전 판에서 끌어오려다, 이전
+    # 판에도 없으므로 KeyError 로 빌드를 통째로 죽인다(실제로 죽었다).
+    ea_only = set(sources.ECB_BSI_EA) | set(sources.ECB_BLS_EA) | {"dl"}
+    expected = set(prev["EZ"]) - ea_only
     for blk in sources.GEO:          # 유로 블록만. 해외 블록은 계열 구성이 다르다.
         missing = expected - set(data[blk])
-        if missing:
-            log(f"  [경고] {blk} 에 없는 계열: {sorted(missing)} — 이전 판에서 채운다")
-            for key in missing:
-                data[blk][key] = prev[blk][key]
+        if not missing:
+            continue
+        # 이전 판에 있는 것만 끌어온다. 장부 맞추는 검사가 빌드를 죽이면
+        # 안 된다 — 값 하나 물려받자고 그날 차트팩 전체를 잃는 셈이다.
+        have = {k for k in missing if k in prev.get(blk, {})}
+        log(f"  [경고] {blk} 에 없는 계열: {sorted(missing)} — "
+            f"이전 판에서 {len(have)}개 채운다")
+        for key in have:
+            data[blk][key] = prev[blk][key]
     return data
 
 
@@ -994,6 +1007,53 @@ def fill_kr_items(data: dict, meta: dict, log=log) -> None:
             f"{meta['krItemMonth']} 기준 {have}/{len(values)}항목")
 
 
+def check_values(data: dict, meta: dict) -> None:
+    """있을 수 없는 값과 또래에서 홀로 동떨어진 값을 짚는다.
+
+    고치지 않는다. 무엇이 맞는지는 사람이 봐야 하고, 기계가 할 일은 '여기를
+    보라'고 말하는 것까지다. 짚은 것은 로그 -> ops -> 주간 점검으로 간다.
+    """
+    hits = 0
+
+    # 1) 범위. 단위가 천 배 틀리거나 부호가 뒤집힌 것을 잡는다.
+    for blk, block in data.items():
+        if blk == "meta":
+            continue
+        for name, (lo, hi) in sources.BOUNDS.items():
+            vals = block.get(name)
+            if not isinstance(vals, list):
+                continue
+            bad = [v for v in vals if v is not None and not lo <= v <= hi]
+            if bad:
+                hits += 1
+                log(f"  [경고] 값이 범위를 벗어난다 — {blk}.{name} "
+                    f"{len(bad)}개, 예: {bad[:3]} (허용 {lo}~{hi})")
+
+    # 2) 또래 비교. 같은 눈금을 쓰는 묶음 안에서 혼자 동떨어진 것을 잡는다.
+    #    중국 산업생산이 걸렸을 자리다 — 다른 나라가 92~196 일 때 혼자 46 이었다.
+    for name in sources.PEER_RATIO:
+        for group in sources.PEER_GROUPS:
+            last = {}
+            for blk in group:
+                vals = (data.get(blk) or {}).get(name)
+                if not isinstance(vals, list):
+                    continue
+                got = [v for v in vals if v is not None]
+                if got and got[-1] > 0:
+                    last[blk] = got[-1]
+            if len(last) < 3:          # 둘로는 중앙값이 뜻이 없다
+                continue
+            mid = statistics.median(last.values())
+            for blk, v in sorted(last.items()):
+                if not (mid * sources.PEER_LOW <= v <= mid * sources.PEER_HIGH):
+                    hits += 1
+                    log(f"  [경고] 또래와 동떨어진다 — {blk}.{name} {v} "
+                        f"(같은 묶음 중앙값 {mid:g}). 다른 계열이 실렸을 수 있다.")
+
+    log(f"  값 점검  범위 {len(sources.BOUNDS)}계열 · 또래 "
+        f"{len(sources.PEER_RATIO)}계열 — 짚은 것 {hits}건")
+
+
 def fill_bank(data: dict, meta: dict) -> None:
     """은행 금리와 대출 증가율. ECB Data Portal(MIR·BSI).
 
@@ -1024,6 +1084,20 @@ def fill_bank(data: dict, meta: dict) -> None:
     n = sum(put("EZ", name, "BSI", key, 1)
             for name, key in sources.ECB_BSI_EA.items())
     log(f"  대출증가율 BSI ECB  유로지역 {n}/{len(sources.ECB_BSI_EA)}")
+
+    # 은행대출서베이는 분기라 축이 다르다.
+    qs = meta["qs"]
+    n = 0
+    for name, key in sources.ECB_BLS_EA.items():
+        try:
+            rows = ecb.series("BLS", key, qs[0])
+        except (ecb.EcbError, KeyError, ValueError) as exc:
+            log(f"    └ EZ.{name} — {str(exc)[:70]}")
+            continue
+        data.setdefault("EZ", {})[name] = [
+            None if rows.get(q) is None else half_up(rows[q], 1) for q in qs]
+        n += 1
+    log(f"  대출서베이 BLS ECB  유로지역 {n}/{len(sources.ECB_BLS_EA)}")
 
 
 def fill_kr_trade(data: dict, meta: dict) -> None:
