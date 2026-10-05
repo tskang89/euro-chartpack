@@ -315,13 +315,25 @@ def build(prev: dict) -> dict:
             have = sum(1 for v in data["DE"][key] if v is not None)
             log(f"  독일 {key:5} ifo 업황     값 {have}/{len(months)}")
     except (ifo.IfoError, KeyError, ValueError, ImportError) as exc:
-        log(f"  [실패] 독일 ifo — {exc}")
+        # 받지 못하면 **이전 판을 물려 쓴다.** 그냥 넘기면 계열이 통째로
+        # 사라져 독일 탭에서 업황 차트가 없어진다 — 2026-10-05 에 그랬다.
+        # 값이 묵는 것은 눈에 보이지만 없어지는 것은 안 보인다.
+        log(f"  [실패] 독일 ifo — {exc} (이전 값을 물려 쓴다)")
+        for key in sources.SURVEY_DE:
+            got = old_months(prev, "DE", key, months)
+            if got:
+                data["DE"][key] = got
+                log(f"    └ {key} — 이전 판에서 "
+                    f"{sum(1 for v in got if v is not None)}개를 물려 썼다.")
 
     for key, idbank in sources.SURVEY_FR.items():
         try:
             rows = insee.series(idbank)
         except insee.InseeError as exc:
-            log(f"  [실패] 프랑스 {key} — {exc}")
+            log(f"  [실패] 프랑스 {key} — {exc} (이전 값을 물려 쓴다)")
+            got = old_months(prev, "FR", key, months)
+            if got:
+                data["FR"][key] = got
             continue
         data["FR"][key] = [None if rows.get(m) is None
                            else half_up(rows[m], 1) for m in months]
@@ -1086,6 +1098,22 @@ def fill_kr_items(data: dict, meta: dict, log=log) -> None:
         have = sum(1 for v in values if v is not None)
         log(f"  품목 KR.{key:4} ECOS {sources.KR_CPI_TABLE}   "
             f"{meta['krItemMonth']} 기준 {have}/{len(values)}항목")
+
+
+def old_months(prev: dict, blk: str, name: str, months: list[str]) -> list | None:
+    """이전 판의 월간 계열을 이번 축의 **같은 시점**에 다시 앉힌다.
+
+    build() 안의 carried() 와 같은 일을 하지만, 그쪽은 해외 구획에서 정의돼
+    앞쪽(ifo·INSEE)에서는 쓸 수 없다. 자리가 아니라 시점으로 맞춘다 — 길이만
+    보고 통째로 옮기면 축이 한 달 밀린 날 8월 값이 9월 자리에 앉는다.
+    """
+    old = prev.get(blk, {}).get(name)
+    old_axis = prev.get("meta", {}).get("months") or []
+    if not old or len(old) != len(old_axis):
+        return None
+    at = dict(zip(old_axis, old))
+    got = [at.get(m) for m in months]
+    return got if any(v is not None for v in got) else None
 
 
 def fill_gov_size(data: dict, meta: dict, log=log) -> None:
