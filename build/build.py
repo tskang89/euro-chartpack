@@ -562,6 +562,14 @@ def build(prev: dict) -> dict:
             log(f"  예비 {blk}.{name:6} {fflow.split('@')[-1][:24]:24} "
                 f"값 {have}/{len(months)}")
 
+    # 한국 헤드라인·근원 물가는 ECOS 로 덮어쓴다. OECD 가 늦게 싣기 때문이고,
+    # 반드시 위 OECD 채우기 **뒤에** 와야 한다 — 앞에 두면 도로 덮인다.
+    if ecos.have_key():
+        try:
+            fill_kr_cpi(data, meta)
+        except (ecos.EcosError, KeyError, ValueError) as exc:
+            log(f"  [실패] 한국 물가(ECOS) — {exc} (OECD 값을 그대로 둔다)")
+
     # 정책금리 (BIS). OECD 단기금리는 콜·은행간금리라 정책금리가 아니고
     # 중국이 빠진다. 자세한 것은 bis.py.
     try:
@@ -1028,6 +1036,47 @@ def fill_kr_items(data: dict, meta: dict, log=log) -> None:
         have = sum(1 for v in values if v is not None)
         log(f"  품목 KR.{key:4} ECOS {sources.KR_CPI_TABLE}   "
             f"{meta['krItemMonth']} 기준 {have}/{len(values)}항목")
+
+
+def fill_kr_cpi(data: dict, meta: dict, log=log) -> None:
+    """한국 헤드라인·근원 물가를 ECOS 에서 받아 OECD 값을 대신한다.
+
+    ECOS 는 지수를 주므로 전년동월비는 여기서 낸다. 한 해 전 값이 필요하니
+    축 첫 달보다 1년 앞에서부터 받는다.
+
+    ECOS 에 값이 없는 달은 **OECD 값을 그대로 둔다.** 통째로 갈아 치우면
+    ECOS 쪽 과거가 짧을 때 지난 몇 해가 비어 버린다.
+
+    두 출처가 겹치는 마지막 달을 견줘 본다. 같은 국가 통계를 두 길로 받는
+    것이라 값이 어긋날 까닭이 없다 — 어긋나면 품목 코드나 정의를 잘못 짚은
+    것이므로 알린다. 0.2%p 는 반올림 차이를 넘기는 선이다.
+    """
+    months = meta["months"]
+    start = f"{int(months[0][:4]) - 1}{months[0][5:7]}"
+    end = months[-1].replace("-", "")
+    blk = sources.KR_ITEM_BLOCK
+
+    for name, (code, table) in sources.KR_CPI_MAIN.items():
+        idx = ecos.series(table, code, "M", start, end)
+        old = data.get(blk, {}).get(name) or [None] * len(months)
+        new = []
+        for i, m in enumerate(months):
+            rate = ecos.yoy(idx, m.replace("-", ""))
+            new.append(old[i] if rate is None else half_up(rate, 1))
+        # 두 출처가 겹치는 **마지막** 달로 견준다. 최근 것이 어긋나는지가
+        # 중요하고, ECOS 가 메운 달은 OECD 쪽이 비어 있어 견줄 것이 없다.
+        gap = next(((months[i], old[i], new[i])
+                    for i in range(len(months) - 1, -1, -1)
+                    if old[i] is not None and new[i] is not None), None)
+        data.setdefault(blk, {})[name] = new
+        have = sum(1 for v in new if v is not None)
+        last = next((months[i] for i in range(len(months) - 1, -1, -1)
+                     if new[i] is not None), "없음")
+        log(f"  한국 {name:6} ECOS {table} {code:3} 값 {have}/{len(months)}"
+            f"  마지막 {last}")
+        if gap and abs(gap[1] - gap[2]) > 0.2:
+            log(f"    └ [어긋남] {gap[0]} OECD {gap[1]} vs ECOS {gap[2]} "
+                f"— 품목 코드나 정의를 다시 볼 것")
 
 
 def fill_hicp_ctrb(data: dict, meta: dict) -> None:
