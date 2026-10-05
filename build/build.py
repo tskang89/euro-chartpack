@@ -681,6 +681,10 @@ def build(prev: dict) -> dict:
             fill_kr_cbr(data, meta)
         except (ecos.EcosError, KeyError, ValueError) as exc:
             log(f"  [실패] 한국 정책금리(ECOS) — {exc} (BIS 값을 그대로 둔다)")
+        try:
+            fill_kr_ip(data, meta)
+        except (ecos.EcosError, KeyError, ValueError) as exc:
+            log(f"  [실패] 한국 산업생산 잇기(ECOS) — {exc} (OECD 끝에서 멈춘다)")
 
     # 연간 실질 GDP 성장률
     try:
@@ -1045,6 +1049,46 @@ def fill_kr_items(data: dict, meta: dict, log=log) -> None:
         have = sum(1 for v in values if v is not None)
         log(f"  품목 KR.{key:4} ECOS {sources.KR_CPI_TABLE}   "
             f"{meta['krItemMonth']} 기준 {have}/{len(values)}항목")
+
+
+def fill_kr_ip(data: dict, meta: dict, log=log) -> None:
+    """한국 산업생산의 **꼬리만** ECOS 로 이어 붙인다.
+
+    한국은 8월 산업활동동향을 9월 30일에 냈는데 OECD 에는 7월까지만 와
+    있었다(2026-10-05). 물가·정책금리와 같은 뿌리의 문제다.
+
+    다만 이쪽은 통째로 갈 수 없다. OECD 는 '건설 제외 산업'(BTE)이고 ECOS
+    쪽은 '광업 및 제조업'이라 **지수 기준도 범위도 다르다** — 수준을 바꿔
+    끼우면 지난 몇 해 선이 통째로 움직인다. 그래서 전월대비 증감률만 빌려
+    OECD 가 멈춘 지점부터 이어 붙인다. 두 계열의 전월대비는 광공업이 산업
+    전체를 거의 다 차지해 거의 같다.
+
+    이어 붙인 것은 로그에 남긴다. 출처가 섞인 구간이므로 조용히 두면 안 된다.
+    """
+    months = meta["months"]
+    blk = sources.KR_ITEM_BLOCK
+    table, item = sources.KR_IP
+    cur = data.get(blk, {}).get("ipM")
+    if not cur or all(v is None for v in cur):
+        raise ValueError("OECD 산업생산이 비어 있어 이을 자리가 없다")
+
+    idx = ecos.series(table, item, "M", months[0].replace("-", ""),
+                      months[-1].replace("-", ""))
+    last = max(i for i, v in enumerate(cur) if v is not None)
+    added = []
+    for i in range(last + 1, len(months)):
+        a = idx.get(months[i].replace("-", ""))
+        b = idx.get(months[i - 1].replace("-", ""))
+        if a is None or not b:
+            break
+        cur[i] = half_up(cur[i - 1] * a / b, 1)
+        added.append(f"{months[i]} {cur[i]}")
+    if not added:
+        log(f"  한국 ipM    ECOS {table} — 이을 달이 없다 "
+            f"(OECD 가 {months[last]} 까지)")
+        return
+    log(f"  한국 ipM    ECOS {table} {item} — OECD {months[last]} 뒤에 "
+        f"{len(added)}달 이어 붙임: {', '.join(added)}")
 
 
 def fill_kr_cbr(data: dict, meta: dict, log=log) -> None:
