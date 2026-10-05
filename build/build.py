@@ -778,6 +778,15 @@ def build(prev: dict) -> dict:
         log(f"  해외 {name:6} IMF WEO       {label} 값 {have}/"
             f"{len(imf.AREAS)*len(years)}")
 
+    # 정부 지출·수입. 위 debt·bal 과 달리 **열세 블록 모두**를 IMF 로 채운다.
+    # 유로 탭과 해외 탭이 같은 기준이라야 같은 그림을 견줄 수 있다.
+    try:
+        fill_gov_size(data, meta)
+    except (imf.ImfError, KeyError, ValueError) as exc:
+        log(f"  [실패] 정부 지출·수입 — {exc} (이전 값을 물려 쓴다)")
+        for name in ("gexp", "gexpP", "grev", "grevP"):
+            keep_old(name, "years")
+
     # 경상수지 / GDP. 분모는 언제나 그 해 연간 명목 GDP 다. 그래서 이 계산은
     # 명목 GDP 를 받은 뒤라야 한다 — 앞에 두었다가 전부 빈칸이 된 적이 있다.
     #
@@ -1049,6 +1058,43 @@ def fill_kr_items(data: dict, meta: dict, log=log) -> None:
         have = sum(1 for v in values if v is not None)
         log(f"  품목 KR.{key:4} ECOS {sources.KR_CPI_TABLE}   "
             f"{meta['krItemMonth']} 기준 {have}/{len(values)}항목")
+
+
+def fill_gov_size(data: dict, meta: dict, log=log) -> None:
+    """일반정부 총지출·총수입을 GDP 대비 %와 달러 금액으로 채운다.
+
+    열세 블록(유로지역·회원국 여덟·해외 넷)을 **한 출처**로 받는다. 유로 쪽만
+    Eurostat 으로 받으면 같은 그림을 두 기준으로 보게 된다 — 정부부채가 이미
+    그렇다(유로 탭은 Eurostat EDP, 해외 탭은 IMF). 새로 넣는 것까지 그렇게
+    둘 까닭이 없다.
+
+    달러 금액은 IMF 가 따로 내주지 않아 'GDP 대비 %' × '달러 GDP' 로 낸다.
+    환율을 끌어다 쓰는 것보다 정확하다 — 두 값이 같은 WEO 판에서 나오므로
+    분모가 어긋나지 않는다. 단위는 10억 달러다.
+
+    WEO 는 앞선 해 전망치도 함께 싣는다. 축이 지난 5개년이라 자연히 걸러진다.
+    """
+    years = meta["years"]
+    pct = {}
+    for ind, name in ((imf.EXPEND, "gexpP"), (imf.REVENUE, "grevP")):
+        pct[name] = imf.series(ind, list(imf.ALL_AREAS.values()))
+    gdp = imf.series(imf.GDP_USD, list(imf.ALL_AREAS.values()))
+
+    for pname, lname, label in (("gexpP", "gexp", "정부지출"),
+                                ("grevP", "grev", "정부수입")):
+        for blk, area in imf.ALL_AREAS.items():
+            share = pct[pname].get(area, {})
+            size = gdp.get(area, {})
+            data.setdefault(blk, {})[pname] = [
+                None if share.get(y) is None else half_up(share[y], 1)
+                for y in years]
+            data[blk][lname] = [
+                None if share.get(y) is None or size.get(y) is None
+                else half_up(share[y] / 100 * size[y], 1) for y in years]
+        have = sum(1 for b in imf.ALL_AREAS
+                   for v in data[b][pname] if v is not None)
+        log(f"  재정 {lname:6} IMF WEO       {label} 값 {have}/"
+            f"{len(imf.ALL_AREAS)*len(years)}")
 
 
 def fill_kr_ip(data: dict, meta: dict, log=log) -> None:

@@ -32,6 +32,29 @@ AREAS = {"US": "USA", "CN": "CHN", "JP": "JPN", "KR": "KOR"}
 DEBT = "GGXWDG_NGDP"        # 일반정부 총부채, GDP 대비 %
 BALANCE = "GGXCNL_NGDP"     # 일반정부 순대출(+)/순차입(−), GDP 대비 %
 
+# 일반정부 지출·수입. 유로지역 집계까지 한 출처로 덮으려고 여기서 받는다
+# (2026-10-05). Eurostat 에도 gov_10a_main 이 있지만, 그러면 유로 탭과 해외
+# 탭의 출처가 갈려 같은 그림을 두 기준으로 보게 된다.
+#
+# 코드 이름이 헷갈린다. 'GGX_GDP'·'exp' 도 비슷한 이름으로 있는데 전자는
+# 우리가 보는 나라가 하나도 없고(67개국뿐) 후자는 2024년에서 멈춰 있다.
+# 아래 둘만 13개 블록을 모두, 지난해까지 빠짐없이 덮는다.
+EXPEND = "G_X_G01_GDP_PT"   # 일반정부 총지출, GDP 대비 %
+REVENUE = "GGR_G01_GDP_PT"  # 일반정부 총수입, GDP 대비 %
+GDP_USD = "NGDPD"           # 명목 GDP, 10억 달러
+
+# 달러 금액은 IMF 가 따로 내주지 않는다. 'GDP 대비 %' × '달러 GDP' 로 낸다 —
+# 환율을 끌어다 쓰는 것보다 정확하다. 두 값이 같은 WEO 판에서 나오므로
+# 분모가 어긋날 일이 없다.
+#
+# 유로지역 집계는 'EURO' 다. 'EA' 는 없고, 'EU' 는 있지만 재정 지표가 비어
+# 있다(2026-10-05 확인). EU 와 유로지역은 범위가 다르므로 섞어서도 안 된다.
+ALL_AREAS = {
+    "EZ": "EURO", "DE": "DEU", "FR": "FRA", "IT": "ITA", "ES": "ESP",
+    "NL": "NLD", "BE": "BEL", "IE": "IRL", "AT": "AUT",
+    "US": "USA", "CN": "CHN", "JP": "JPN", "KR": "KOR",
+}
+
 
 class ImfError(RuntimeError):
     pass
