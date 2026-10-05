@@ -1096,6 +1096,33 @@ def fill_gov_size(data: dict, meta: dict, log=log) -> None:
         log(f"  재정 {lname:6} IMF WEO       {label} 값 {have}/"
             f"{len(imf.ALL_AREAS)*len(years)}")
 
+    # 한국만 갈아 끼운다. 까닭은 sources.KR_GOV_EXP 에 적었다 — WEO 의 한국
+    # 재정은 지방정부가 빠진 기준이라 13%p 가 비어 보인다.
+    if ecos.have_key():
+        gdp_krw = ecos.series(*sources.KR_GDP_KRW, "A", years[0], years[-1])
+        usd = gdp.get(imf.ALL_AREAS["KR"], {})
+        for spec, pname, lname, label in (
+                (sources.KR_GOV_EXP, "gexpP", "gexp", "정부지출"),
+                (sources.KR_GOV_REV, "grevP", "grev", "정부수입")):
+            won = ecos.series(*spec, "A", years[0], years[-1])
+            was = data["KR"][pname][-1]
+            share, size = [], []
+            for y in years:
+                a, b = won.get(y), gdp_krw.get(y)
+                if a is None or not b:
+                    share.append(None)
+                    size.append(None)
+                    continue
+                pc = a / b * 100
+                share.append(half_up(pc, 1))
+                size.append(None if usd.get(y) is None
+                            else half_up(pc / 100 * usd[y], 1))
+            if any(v is not None for v in share):
+                data["KR"][pname], data["KR"][lname] = share, size
+                log(f"  재정 KR.{lname:5} ECOS 200Y153 일반정부 {label} — "
+                    f"WEO {was}% 를 {share[-1]}% 로 갈음 "
+                    f"(WEO 는 지방정부가 빠진 기준)")
+
 
 def fill_kr_ip(data: dict, meta: dict, log=log) -> None:
     """한국 산업생산의 **꼬리만** ECOS 로 이어 붙인다.
