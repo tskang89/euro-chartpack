@@ -59,7 +59,21 @@ def series(table: str, item: str, cycle: str,
                     time.sleep(2 * (attempt + 1))
                     continue
                 if "RESULT" in doc:          # 키가 틀렸거나 한도를 넘었다
-                    raise EcosError(doc["RESULT"].get("MESSAGE", doc["RESULT"]))
+                    code = doc["RESULT"].get("CODE", "")
+                    msg = doc["RESULT"].get("MESSAGE", doc["RESULT"])
+                    # INFO-200 은 '해당하는 데이터가 없습니다'인데, 자료가
+                    # 정말 없을 때뿐 아니라 **호출이 몰려 막혔을 때도** 같은
+                    # 것이 온다. 둘을 가릴 길이 응답에 없으므로 한 번 쉬었다
+                    # 다시 묻는다 — 돌아오면 막혔던 것이다.
+                    #
+                    # 2026-10-05 에 10년물 국채금리가 이것으로 떨어졌다.
+                    # 같은 빌드의 다른 ECOS 호출은 멀쩡했고, 몇 시간 전
+                    # 빌드에서는 같은 계열이 들어왔다.
+                    if code == "INFO-200" and attempt + 1 < RETRIES:
+                        last = f"{code} {msg}"
+                        time.sleep(3 * (attempt + 1))
+                        continue
+                    raise EcosError(msg)
                 time.sleep(PACE)
                 got = (doc.get("StatisticSearch") or {}).get("row") or []
                 return {r["TIME"]: float(r["DATA_VALUE"]) for r in got
