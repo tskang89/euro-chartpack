@@ -677,6 +677,10 @@ def build(prev: dict) -> dict:
             fill_kr_cpi(data, meta)
         except (ecos.EcosError, KeyError, ValueError) as exc:
             log(f"  [실패] 한국 물가(ECOS) — {exc} (OECD 값을 그대로 둔다)")
+        try:
+            fill_kr_cbr(data, meta)
+        except (ecos.EcosError, KeyError, ValueError) as exc:
+            log(f"  [실패] 한국 정책금리(ECOS) — {exc} (BIS 값을 그대로 둔다)")
 
     # 연간 실질 GDP 성장률
     try:
@@ -1041,6 +1045,55 @@ def fill_kr_items(data: dict, meta: dict, log=log) -> None:
         have = sum(1 for v in values if v is not None)
         log(f"  품목 KR.{key:4} ECOS {sources.KR_CPI_TABLE}   "
             f"{meta['krItemMonth']} 기준 {have}/{len(values)}항목")
+
+
+def fill_kr_cbr(data: dict, meta: dict, log=log) -> None:
+    """한국 정책금리를 ECOS 에서 받아 BIS 값을 대신한다.
+
+    BIS 는 나라마다 싣는 속도가 달라 한국이 늘 뒤처진다. 2026-10-05 에
+    미국·일본·중국은 10월까지 와 있는데 한국은 8월에서 멈춰 있었다. 빈 달이
+    둘이라 bis.fill_tail 의 한 달 한도를 넘겨 9·10월이 통째로 비었다.
+
+    기준금리는 한국은행이 제 손으로 정하는 숫자이고 ECOS 가 **날마다** 싣는다.
+    남의 집계를 기다릴 까닭이 없다.
+
+    정책금리는 계단이므로 '그 달 말일까지의 마지막 값'을 그 달 값으로 쓴다.
+    달 중간에 바뀌면 그 달부터 새 값이 잡힌다 — 8월 27일 인상이 8월 칸에
+    3.00 으로 들어오는 식이다. 월 계열만 쓰면 이번 달이 월말까지 비므로
+    최근 두 달은 일별로 덮는다.
+    """
+    months = meta["months"]
+    blk = sources.KR_ITEM_BLOCK
+    table, item = sources.KR_POLICY_RATE
+
+    monthly = ecos.series(table, item, "M",
+                          months[0].replace("-", ""),
+                          months[-1].replace("-", ""))
+    # 이번 달과 지난달은 일별로 다시 본다. 월 계열은 달이 끝나야 들어온다.
+    tail_from = f"{months[-2].replace('-', '')}01"
+    daily = ecos.series(table, item, "D", tail_from,
+                        datetime.date.today().strftime("%Y%m%d"))
+    for day in sorted(daily):
+        monthly[day[:6]] = daily[day]          # 그 달의 마지막 값이 남는다
+
+    old = data.get(blk, {}).get("cbr") or [None] * len(months)
+    new, carry = [], None
+    for m in months:
+        v = monthly.get(m.replace("-", ""))
+        if v is not None:
+            carry = v
+        new.append(None if carry is None else half_up(carry, 2))
+
+    data.setdefault(blk, {})["cbr"] = new
+    last = next((months[i] for i in range(len(months) - 1, -1, -1)
+                 if new[i] is not None), "없음")
+    log(f"  한국 cbr    ECOS {table} {item}  값 "
+        f"{sum(1 for v in new if v is not None)}/{len(months)}  마지막 {last}")
+    gap = next(((months[i], old[i], new[i])
+                for i in range(len(months) - 1, -1, -1)
+                if old[i] is not None and new[i] is not None), None)
+    if gap and abs(gap[1] - gap[2]) > 0.01:
+        log(f"    └ [어긋남] {gap[0]} BIS {gap[1]} vs ECOS {gap[2]}")
 
 
 def fill_kr_cpi(data: dict, meta: dict, log=log) -> None:
