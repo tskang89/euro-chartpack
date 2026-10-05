@@ -562,14 +562,6 @@ def build(prev: dict) -> dict:
             log(f"  예비 {blk}.{name:6} {fflow.split('@')[-1][:24]:24} "
                 f"값 {have}/{len(months)}")
 
-    # 한국 헤드라인·근원 물가는 ECOS 로 덮어쓴다. OECD 가 늦게 싣기 때문이고,
-    # 반드시 위 OECD 채우기 **뒤에** 와야 한다 — 앞에 두면 도로 덮인다.
-    if ecos.have_key():
-        try:
-            fill_kr_cpi(data, meta)
-        except (ecos.EcosError, KeyError, ValueError) as exc:
-            log(f"  [실패] 한국 물가(ECOS) — {exc} (OECD 값을 그대로 둔다)")
-
     # 정책금리 (BIS). OECD 단기금리는 콜·은행간금리라 정책금리가 아니고
     # 중국이 빠진다. 자세한 것은 bis.py.
     try:
@@ -672,6 +664,19 @@ def build(prev: dict) -> dict:
         log(f"  해외 {name:6} OECD 물가     근원 값 {have}/"
             f"{len(sources.OECD_AREAS)*len(axis)}"
             + (f"  없음: {miss}" if miss else ""))
+
+    # 한국 헤드라인·근원 물가는 ECOS 로 덮어쓴다. OECD 가 각국 발표를 몇 주
+    # 뒤에 모아 싣기 때문이다.
+    #
+    # **자리가 중요하다.** 위의 OECD 헤드라인(OECD_MONTHLY)과 근원(OECD_CORE)
+    # 채우기가 **둘 다 끝난 뒤**라야 한다. 처음에 헤드라인 뒤에만 두었더니
+    # 근원은 뒤따라오는 OECD_CORE 가 도로 덮어, 소비자물가만 9월로 올라가고
+    # 근원은 8월에 멈춰 있었다.
+    if ecos.have_key():
+        try:
+            fill_kr_cpi(data, meta)
+        except (ecos.EcosError, KeyError, ValueError) as exc:
+            log(f"  [실패] 한국 물가(ECOS) — {exc} (OECD 값을 그대로 둔다)")
 
     # 연간 실질 GDP 성장률
     try:
