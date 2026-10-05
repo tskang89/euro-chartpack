@@ -351,7 +351,14 @@ function euroSections(c){
             독일 탭(주변국을 늘어놓는 자리)과 유로지역 탭에만 붙인다. */
          (M.sprPT && (c==='DE'||isEZ)) ? [{n:'포르투갈',d:M.sprPT,col:'--s4'},
                                           {n:'그리스',d:M.sprEL,col:'--ref'}] : []),
-       note:sprNote+((M.sprPT && (c==='DE'||isEZ)) ? ' 포르투갈·그리스는 별도 탭이 없어 이 그림에만 싣는다.' : '')}
+       note:sprNote+((M.sprPT && (c==='DE'||isEZ)) ? ' 포르투갈·그리스는 별도 탭이 없어 이 그림에만 싣는다.' : '')},
+      ...(M.eurib3M ? [{t:'유리보 금리', u:'%', type:'line', L:LM, dec:2, S:[
+        {n:'1개월',d:M.eurib1M,col:'--s4'},
+        {n:'3개월',d:M.eurib3M,col:'--s1'},
+        {n:'6개월',d:M.eurib6M,col:'--s2'},
+        {n:'12개월',d:M.eurib12M,col:'--s3'},
+        {n:'€STR',d:M.estr,col:'--ref',ref:true}],
+       note:'유로지역 은행 간 무담보 자금 조달의 기준금리. 유로화 대출·조달 계약의 기준이 대부분 3개월물이다. 회원국별 값이 없는 유로지역 하나의 금리라 모든 탭에 같은 그림이 걸린다. 점선은 €STR(무위험 익일물, 일별을 월평균한 것) — 유리보에서 이것을 뺀 폭이 기간·신용 프리미엄이다. 자료: ECB 데이터 포털(FM 월평균·EST). 유리보 산출은 EMMI.'}] : [])
     ]},
     {n:'12', t:'환율', sub:'월간 · ECB 기준환율 월평균', charts:[
       {t:'EUR/USD', u:'달러 / 유로', type:'line', L:axD(LM,dDay('__meta__','fxUsd')), dec:4, zeroBase:false, S:[{n:'EUR/USD',d:M.fxUsd,col:'--s1'}],

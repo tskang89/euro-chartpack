@@ -257,6 +257,34 @@ def build(prev: dict) -> dict:
         except (eurostat.EurostatError, KeyError, ValueError) as exc:
             log(f"  [실패] 주변국 스프레드 — {exc}")
 
+    # --- 유리보와 €STR (유로지역 하나의 금리라 meta 에 둔다) ---
+    for key, skey in sources.ECB_EURIBOR.items():
+        try:
+            rows = ecb.series("FM", skey, months[0])
+        except Exception as exc:                       # noqa: BLE001
+            log(f"  [실패] 유리보 {key} — {exc}")
+            meta[key] = meta.get(key) or [None] * len(months)
+            continue
+        meta[key] = [None if rows.get(m) is None else half_up(rows[m], 2)
+                     for m in months]
+        have = sum(1 for v in meta[key] if v is not None)
+        log(f"  금리  {key:8} ECB FM 유리보 월평균 값 {have}/{len(months)}")
+    try:
+        flow, skey = sources.ECB_ESTR_DAILY
+        daily = ecb.series(flow, skey, months[0])
+        # 일별을 그달 평균으로. ECB 가 €STR 월평균 계열을 내지 않는다.
+        bucket: dict[str, list[float]] = {}
+        for day, v in daily.items():
+            bucket.setdefault(day[:7], []).append(v)
+        meta["estr"] = [None if not bucket.get(m)
+                        else half_up(sum(bucket[m]) / len(bucket[m]), 2)
+                        for m in months]
+        have = sum(1 for v in meta["estr"] if v is not None)
+        log(f"  금리  estr     ECB EST 일별→월평균   값 {have}/{len(months)}")
+    except Exception as exc:                           # noqa: BLE001
+        log(f"  [실패] €STR — {exc}")
+        meta["estr"] = meta.get("estr") or [None] * len(months)
+
     # --- 품목별 소비자물가 (가로 막대) ---
     item_month = meta[sources.ITEM_MONTH_KEY]
     codes = sorted({c for v in sources.ITEMS.values() for c in v})
