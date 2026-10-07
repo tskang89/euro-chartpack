@@ -38,7 +38,8 @@ import ecb                                                       # noqa: E402
 import imf                                                       # noqa: E402
 import eurostat                                                  # noqa: E402
 import oecd                                                      # noqa: E402
-import sources                                                   # noqa: E402
+import sources
+import jscheck                                         # noqa: E402                                                   # noqa: E402
 import stocks                                                    # noqa: E402
 
 TEMPLATE = BASE / "template.html"
@@ -1632,6 +1633,10 @@ def main() -> int:
     blob = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     html = TEMPLATE.read_text(encoding="utf-8").replace("__DATA__", blob)
     html = html.replace("__OPS__", ops_blob(data))
+
+    # 쪽을 쓰기 전에 자바스크립트가 성한지 본다. 깨졌으면 여기서 멈춘다 —
+    # 깨진 쪽을 올리느니 어제 쪽이 그대로 떠 있는 편이 낫다(2026-10-07).
+    jscheck.must_be_sound(html, log)
     OUTPUT.write_text(html, encoding="utf-8")
     log(f"\nindex.html 갱신 — {len(html):,}자 (데이터 {len(blob):,}자)")
     return 0
