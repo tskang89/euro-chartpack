@@ -802,6 +802,29 @@ def build(prev: dict) -> dict:
         log(f"  해외 {name:6} 세계은행       {label} 값 {have}/"
             f"{len(worldbank.AREAS)*len(years)}")
 
+    # 1인당 국민소득 — 달러(Atlas 방식)와 PPP. **열세 블록 모두**를 세계은행
+    # 에서 받는다. 소득 수준은 나라끼리 견주려고 보는 것이라 한 잣대로 재야
+    # 한다. 자세한 것은 worldbank.py 의 ALL_AREAS·GNI_PC 주석.
+    for ind, name, label in ((worldbank.GNI_PC, "gniPc", "1인당 GNI(달러)"),
+                             (worldbank.GNI_PC_PPP, "gniPpp", "1인당 GNI(PPP)")):
+        try:
+            got = worldbank.series(ind, list(worldbank.ALL_AREAS.values()),
+                                   years[0], years[-1])
+        except worldbank.WorldBankError as exc:
+            # keep_old 는 해외 넷만 돌보므로 여기서는 쓰지 못한다.
+            log(f"  [실패] 세계은행 {name} — {exc} (이전 값을 물려 쓴다)")
+            for blk in worldbank.ALL_AREAS:
+                data[blk][name] = carried(blk, name, "years")
+            continue
+        for blk, area in worldbank.ALL_AREAS.items():
+            rows = got.get(area, {})
+            data[blk][name] = [None if rows.get(y) is None
+                               else half_up(rows[y], 0) for y in years]
+        have = sum(1 for b in worldbank.ALL_AREAS for v in data[b][name]
+                   if v is not None)
+        log(f"  전체 {name:6} 세계은행       {label} 값 {have}/"
+            f"{len(worldbank.ALL_AREAS)*len(years)}")
+
     # 재정 (IMF WEO, 일반정부 기준)
     for ind, name, label in ((imf.DEBT, "debt", "정부부채/GDP"),
                              (imf.BALANCE, "bal", "재정수지/GDP")):

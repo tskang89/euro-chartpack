@@ -196,6 +196,14 @@ function euroSections(c){
       {t:'총인구', u:'백만 명', type:'line', L:LY, dec:2, points:true, zeroBase:false, S:[{n:'총인구',d:d.pop,col:'--s3'}],
        note:'국민계정 기준 연평균 총인구(nama_10_pe).'}
     ]},
+    {n:'1b', t:'1인당 국민소득', sub:'연간 · '+YR+' · 세계은행', charts:[
+      {t:'1인당 국민소득 (달러)', u:'달러', type:'line', L:LY, dec:0, points:true, zeroBase:false, S:[
+        {n:'1인당 GNI',d:d.gniPc,col:'--s1'}],
+       note:'세계은행 Atlas 방식 1인당 국민총소득(GNI), 경상 미달러. 환율이 한 해 크게 움직여도 소득 수준이 출렁이지 않도록 3년 평균환율로 환산하므로, 시장환율 그대로 계산한 값과 끝자리가 다르다. 유로지역·회원국과 해외 네 블록을 모두 같은 계열에서 받는다. 자료: 세계은행 NY.GNP.PCAP.CD.'},
+      {t:'1인당 국민소득 (PPP)', u:'국제달러', type:'line', L:LY, dec:0, points:true, zeroBase:false, S:[
+        {n:'1인당 GNI(PPP)',d:d.gniPpp,col:'--s3'}],
+       note:'구매력평가(PPP) 환율로 환산한 1인당 GNI, 경상 국제달러. 나라 사이의 물가수준 차이를 보정한 값이라 환율 변동에 덜 흔들리고 실제 생활수준을 견주는 데 쓴다. 자료: 세계은행 NY.GNP.PCAP.PP.CD.'}
+    ]},
     {n:'2', t:'실질 GDP 성장률', sub:'연간 · 분기', charts:[
       {t:'연간 실질 GDP 성장률', u:'% 전년비', type:'bar', L:LY, dec:1, S:[{n:'실질 GDP',d:d.ga,col:'--s1'}]},
       {t:'분기 실질 GDP 성장률', u:'%', type:'bar', L:LQ, dec:1, S:[
@@ -462,6 +470,14 @@ function globalSections(c){
       {t:'총인구', u:'백만 명', type:'line', L:LY, dec:2, points:true, zeroBase:false, S:[
         {n:'총인구',d:d.pop,col:'--s3'}],
        note:'연중 인구. 자료: 세계은행 SP.POP.TOTL.'}
+    ]},
+    {n:'1b', t:'1인당 국민소득', sub:'연간 · 세계은행', charts:[
+      {t:'1인당 국민소득 (달러)', u:'달러', type:'line', L:LY, dec:0, points:true, zeroBase:false, S:[
+        {n:'1인당 GNI',d:d.gniPc,col:'--s1'}],
+       note:'세계은행 Atlas 방식 1인당 국민총소득(GNI), 경상 미달러. 환율이 한 해 크게 움직여도 소득 수준이 출렁이지 않도록 3년 평균환율로 환산한다. 유로지역 탭과 같은 계열이라 그대로 견줄 수 있다. 자료: 세계은행 NY.GNP.PCAP.CD.'},
+      {t:'1인당 국민소득 (PPP)', u:'국제달러', type:'line', L:LY, dec:0, points:true, zeroBase:false, S:[
+        {n:'1인당 GNI(PPP)',d:d.gniPpp,col:'--s3'}],
+       note:'구매력평가(PPP) 환율로 환산한 1인당 GNI, 경상 국제달러. 나라 사이의 물가수준 차이를 보정한 값이라 환율 변동에 덜 흔들리고 실제 생활수준을 견주는 데 쓴다. 자료: 세계은행 NY.GNP.PCAP.PP.CD.'}
     ]},
     {n:'2', t:'실질 GDP 성장률', sub:'연간 · 분기', charts:[
       {t:'연간 실질 GDP 성장률', u:'%', type:'bar', L:LY, dec:1, S:[

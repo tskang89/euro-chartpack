@@ -27,8 +27,29 @@ PACE = 0.3
 # 화면 블록 -> ISO3 코드
 AREAS = {"US": "USA", "CN": "CHN", "JP": "JPN", "KR": "KOR"}
 
+# 열세 블록 전부. 유로지역 집계는 EMU 다.
+#
+# GDP·인구는 유로지역 쪽을 Eurostat 에서 받으므로 위 AREAS(해외 넷)만 쓴다.
+# 1인당 국민소득은 다르다 — 나라끼리 견주려고 보는 숫자이므로 한 잣대로
+# 재야 한다. 유로 회원국만 Eurostat 으로 따로 받으면 환산 환율과 인구
+# 정의가 달라져 견줄 수 없는 값이 된다(2026-10-12 소장님 지시).
+ALL_AREAS = {"EZ": "EMU", "DE": "DEU", "FR": "FRA", "IT": "ITA", "ES": "ESP",
+             "NL": "NLD", "BE": "BEL", "IE": "IRL", "AT": "AUT",
+             "KR": "KOR", "US": "USA", "CN": "CHN", "JP": "JPN"}
+
 GDP_USD = "NY.GDP.MKTP.CD"      # 명목 GDP, 경상 미달러 (시장환율)
 POPULATION = "SP.POP.TOTL"      # 총인구
+
+# 1인당 국민소득(GNI).
+#
+# 달러 계열은 Atlas 방식이다. 세계은행이 소득 분류에 쓰는 공식 계열이고,
+# 환율 급변의 영향을 줄이려 3년 평균환율로 환산한다. 그래서 한국은행이
+# 내는 1인당 GNI 와 끝자리가 조금 다르다(2024년 36,750 대 36,624달러).
+# 시장환율 그대로의 1인당 값은 세계은행이 따로 내지 않으므로, GNI 총액을
+# 인구로 내가 나누는 수밖에 없다 — 그러면 출처가 '내 계산' 이 된다.
+# 공표된 계열을 그대로 쓰고 각주에 방식을 밝히는 쪽을 택했다.
+GNI_PC = "NY.GNP.PCAP.CD"          # 1인당 GNI, Atlas 방식, 경상 미달러
+GNI_PC_PPP = "NY.GNP.PCAP.PP.CD"   # 1인당 GNI, PPP, 경상 국제달러
 
 
 class WorldBankError(RuntimeError):
