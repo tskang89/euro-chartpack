@@ -1203,6 +1203,28 @@ def fill_gov_size(data: dict, meta: dict, log=log) -> None:
                     f"WEO {was}% 를 {share[-1]}% 로 갈음 "
                     f"(WEO 는 지방정부가 빠진 기준)")
 
+        # 재정수지도 갈아 끼운다(2026-10-12 소장님 지시). 지출·수입만 바꿔
+        # 두었더니 한 탭 안에서 '수입 − 지출' 이 재정수지와 맞지 않았다 —
+        # 2021년 수입 35.0 − 지출 35.4 = −0.4 인데 수지는 WEO 의 0.0 이었다.
+        # 포괄이 다른 두 출처를 한 화면에 둔 탓이다.
+        #
+        # 국민계정에서 재정수지는 저축투자차액(순대출(+)/순차입(−), B.9)이고,
+        # ECOS 값은 같은 표의 총수입 − 총지출과 원 단위까지 맞는다.
+        #
+        # 부채는 그대로 WEO 다. 한국은행 국민계정에 일반정부 부채 잔액이
+        # 없다 — ECOS 표를 844개까지 뒤져 봐도 자금순환의 금융부채뿐인데
+        # 그것은 시가 평가에 포괄도 달라 바꿔 끼울 수 없다. 화면 각주에
+        # 그 사실을 적어 둔다.
+        won = ecos.series(*sources.KR_GOV_BAL, "A", years[0], years[-1])
+        was = (data.get("KR", {}).get("bal") or [None])[-1]
+        bal = [None if won.get(y) is None or not gdp_krw.get(y)
+               else half_up(won[y] / gdp_krw[y] * 100, 1) for y in years]
+        if any(v is not None for v in bal):
+            data["KR"]["bal"] = bal
+            log(f"  재정 KR.bal   ECOS 200Y153 일반정부 재정수지 — "
+                f"WEO {was}% 를 {bal[-1]}% 로 갈음 "
+                f"(WEO 는 지방정부가 빠진 기준)")
+
 
 def fill_kr_ip(data: dict, meta: dict, log=log) -> None:
     """한국 산업생산의 **꼬리만** ECOS 로 이어 붙인다.
