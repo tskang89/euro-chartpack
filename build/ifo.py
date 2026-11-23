@@ -24,12 +24,15 @@ from __future__ import annotations
 
 import datetime
 import io
+import json
+import pathlib
 import time
 
 import requests
 
 URL = ("https://www.ifo.de/sites/default/files/secure/timeseries/"
        "gsk-e-{ym}.xlsx")
+SNAPSHOT = pathlib.Path(__file__).resolve().parent.parent / "data" / "ifo.json"
 TIMEOUT = 90
 LOOK_BACK = 4          # 이번 달부터 몇 달까지 거슬러 찾아볼 것인가
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -106,12 +109,80 @@ def _column(ws, col: int, first_row: int = 9) -> dict[str, float]:
     return out
 
 
-def series(today: datetime.date | None = None,
-           log=print) -> dict[str, dict[str, float]]:
-    """{'all': {월: 지수}, 'man': {월: 잔액}, 'srv': {월: 잔액}}."""
-    wb, _ym = workbook(today, log=log)
+def _extract(wb) -> dict[str, dict[str, float]]:
     out = {"all": _column(wb["ifo Business Climate"], 2)}
     sectors = wb["Sectors"]
     for key, col in SECTOR_COL.items():
         out[key] = _column(sectors, col)
     return out
+
+
+def fresh(today: datetime.date | None = None,
+          log=print) -> tuple[dict[str, dict[str, float]], str]:
+    """ifo 에서 바로 받아 (계열, 기준연월). 막히면 IfoError 를 낸다.
+
+    저장분으로 물러서지 않는다 — tools/ifo_snapshot.py 가 이것을 쓴다.
+    """
+    wb, ym = workbook(today, log=log)
+    return _extract(wb), ym
+
+
+def read_snapshot(log=print) -> dict[str, dict[str, float]] | None:
+    """사무소 PC 가 올려 둔 저장분. 없거나 깨졌으면 None."""
+    try:
+        doc = json.loads(SNAPSHOT.read_text(encoding="utf-8"))
+        got = {k: {m: float(v) for m, v in doc["series"][k].items()}
+               for k in ("all", "man", "srv")}
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        log(f"    ifo 저장분을 읽지 못했다 — {exc}")
+        return None
+    log(f"    ifo 저장분 gsk-e-{doc.get('ym','?')}.xlsx "
+        f"({doc.get('saved','?')[:10]} 사무소에서 올림)")
+    return got
+
+
+def write_snapshot(got: dict, ym: str) -> bool:
+    """저장분을 쓴다. 내용이 그대로면 건드리지 않고 False."""
+    doc = {"ym": ym,
+           "saved": datetime.datetime.now(datetime.timezone.utc)
+                            .strftime("%Y-%m-%dT%H:%M:%SZ"),
+           "series": {k: got[k] for k in ("all", "man", "srv")}}
+    body = json.dumps(doc, ensure_ascii=False, indent=1, sort_keys=True)
+    if SNAPSHOT.exists():
+        try:
+            was = json.loads(SNAPSHOT.read_text(encoding="utf-8"))
+            if was.get("ym") == ym and was.get("series") == doc["series"]:
+                return False           # 'saved' 만 달라진 것은 쓰지 않는다
+        except ValueError:
+            pass
+    SNAPSHOT.parent.mkdir(parents=True, exist_ok=True)
+    SNAPSHOT.write_text(body + "\n", encoding="utf-8")
+    return True
+
+
+def series(today: datetime.date | None = None, log=print,
+           allow_snapshot: bool = True) -> dict[str, dict[str, float]]:
+    """{'all': {월: 지수}, 'man': {월: 잔액}, 'srv': {월: 잔액}}.
+
+    **2026-11-23 부터 GitHub 런너에서는 ifo 가 열리지 않는다.** 그날 빌드가
+    넉 달치를 하나도 받지 못했다. 같은 시각 사무소 IP 로는 202610·202609 가
+    그대로 내려왔다(각 102KB, PK). 일곱 시간 뒤 런너에서 다시 해도 같았으니
+    일시적인 것이 아니라 Azure IP 를 막은 것으로 본다 — 주소에 박힌
+    `/secure/` 가 본디 접근 제어가 걸린 경로다. 2026-11-20 까지는 런너에서도
+    받혔다.
+
+    그래서 사무소 PC 가 평일 06:40·11:00 에 `tools/ifo_snapshot.py` 로 받아
+    `data/ifo.json` 에 올리고, 런너는 직접 받기가 막히면 그것을 읽는다.
+    저장분마저 없으면 IfoError 를 그대로 내보낸다 — 그때는 build.py 가
+    이전 판 값을 물려 쓴다.
+    """
+    try:
+        wb, _ym = workbook(today, log=log)
+    except IfoError:
+        if not allow_snapshot:
+            raise
+        got = read_snapshot(log=log)
+        if got is None:
+            raise
+        return got
+    return _extract(wb)

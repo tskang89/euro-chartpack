@@ -28,6 +28,20 @@ on:
     #   gh run list --event workflow_dispatch --json createdAt
     # 콘솔이 찌른 것만 workflow_dispatch 로 남아 이 예약과 섞이지 않는다.
     - cron: "0 5 * * 1-5"
+
+  # ifo 저장분이 올라오면 그 자리에서 다시 그린다.
+  #
+  # ifo 는 2026-11-23 부터 런너에서 열리지 않아 사무소 PC 가 받아 올린다
+  # (tools/ifo_snapshot.py). 그 커밋을 이튿날 아침까지 묵혀 두면 ifo 발표일
+  # 당일 차트가 옛 달에 머문다. 그래서 푸시가 곧 빌드를 부르게 했다.
+  #
+  # **paths 를 이 파일 하나로 좁힌 것이 요점이다.** 빌드가 끝나면 스스로
+  # index.html 을 되커밋하는데, 그것까지 방아쇠에 걸리면 무한히 돈다.
+  # 저장분은 달에 한 번 바뀌므로 덤으로 도는 빌드도 달에 한 번뿐이다.
+  push:
+    paths:
+      - "data/ifo.json"
+
   workflow_dispatch:
     inputs:
       check_only:
