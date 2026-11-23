@@ -1,8 +1,8 @@
 # 작업 스케줄러가 부르는 실행 래퍼 — ifo 업황지수를 받아 저장소에 올린다.
 #
-# ifo 는 2026-11-23 부터 GitHub 런너에서 열리지 않는다. 사무소 IP 로는
-# 그대로 내려오므로 여기서 받아 data/ifo.json 으로 올리고, 런너는 직접
-# 받기가 막히면 그것을 읽는다. 까닭은 tools/ifo_snapshot.py 머리말에 있다.
+# ifo 는 GitHub 런너에서 들쭉날쭉하다. 사무소 IP 로는 늘 내려오므로
+# 여기서 받아 data/ifo.json 으로 올리고, 런너는 막히는 판에서 그것을
+# 읽는다. 까닭은 tools/ifo_snapshot.py 머리말에 있다.
 #
 # 손으로 돌려도 된다:  powershell -ExecutionPolicy Bypass -File run_ifo.ps1
 $ErrorActionPreference = "Stop"
